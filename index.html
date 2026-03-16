@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -40,7 +40,7 @@
           <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
           <path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        <input type="text" id="searchInput" placeholder="Busca películas, series…" autocomplete="off" spellcheck="false" />
+        <input type="text" id="searchInput" placeholder="Search for movies, series…" autocomplete="off" spellcheck="false" />
         <button class="clear-btn" id="clearBtn" aria-label="Clear">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -75,9 +75,9 @@
             <div class="card-glow"></div>
           </div>
           <div class="card-info">
-            <span class="card-badge">Serie</span>
+            <span class="card-badge">Series</span>
             <h3>Game of Thrones</h3>
-            <p>8 temporadas · Fantasía épica</p>
+            <p>8 seasons · Epic Fantasy</p>
           </div>
         </div>
         
@@ -87,9 +87,9 @@
             <div class="card-glow"></div>
           </div>
           <div class="card-info">
-            <span class="card-badge">Serie</span>
+            <span class="card-badge">Series</span>
             <h3>House of the Dragon</h3>
-            <p>2 temporadas · Fantasía épica</p>
+            <p>2 seasons · Epic Fantasy</p>
           </div>
         </div>
       </div> -->
@@ -97,12 +97,12 @@
       <!-- Search results -->
       <div id="searchResults" class="search-results hidden">
         <div class="results-header">
-          <h2 id="resultsTitle">Resultados</h2>
+          <h2 id="resultsTitle">Results</h2>
           <span id="resultsCount" class="results-count"></span>
         </div>
         <div id="resultsGrid" class="results-grid"></div>
         <div id="loadMore" class="load-more hidden">
-          <button class="btn-glass" id="loadMoreBtn">Cargar más</button>
+          <button class="btn-glass" id="loadMoreBtn">Load more</button>
         </div>
       </div>
     </section>
@@ -114,7 +114,7 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Inicio
+          Home
         </button>
         <div class="detail-meta">
           <h2 id="detailTitle"></h2>
@@ -132,7 +132,7 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Temporadas
+          Seasons
         </button>
         <h2 id="episodesTitle"></h2>
       </div>
@@ -146,12 +146,12 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Episodios
+          Episodes
         </button>
         <h2 id="playerTitle"></h2>
         <div class="player-nav">
-          <button class="btn-glass" id="prevEp" disabled>‹ Anterior</button>
-          <button class="btn-glass" id="nextEp" disabled>Siguiente ›</button>
+          <button class="btn-glass" id="prevEp" disabled>‹ Previous</button>
+          <button class="btn-glass" id="nextEp" disabled>Next ›</button>
         </div>
       </div>
       <div class="player-wrap">

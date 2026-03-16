@@ -137,7 +137,7 @@ async function doSearch(query, page = 1, append = false) {
     if (!append) {
       resultsGrid.innerHTML = ''
       resultsTitle.textContent = `"${query}"`
-      resultsCount.textContent = `${data.total_results.toLocaleString()} resultados`
+      resultsCount.textContent = `${data.total_results.toLocaleString()} results`
       searchResults.classList.remove('hidden')
     }
 
@@ -157,7 +157,7 @@ async function doSearch(query, page = 1, append = false) {
 
 function buildResultCard(item) {
   const isTV = item.media_type === 'tv'
-  const title = item.title || item.name || 'Sin título'
+  const title = item.title || item.name || 'Untitled'
   const year  = (item.release_date || item.first_air_date || '').slice(0,4)
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null
   const poster = item.poster_path
@@ -173,7 +173,7 @@ function buildResultCard(item) {
         : `<div class="no-poster">🎬</div>`}
     </div>
     <div class="result-info">
-      <div class="type-pill">${isTV ? 'Serie' : 'Película'}</div>
+      <div class="type-pill">${isTV ? 'Series' : 'Movie'}</div>
       <div class="result-title">${escHtml(title)}</div>
       <div class="result-meta">
         ${year ? `<span class="result-year">${year}</span>` : ''}
@@ -202,7 +202,7 @@ async function openDetail(id, type) {
     showView('detail')
   } catch(e) {
     console.error(e)
-    alert('Error cargando el contenido. Verifica tu token TMDB.')
+    alert('Error loading content. Check your TMDB token.')
   } finally {
     setLoading(false)
   }
@@ -210,7 +210,7 @@ async function openDetail(id, type) {
 
 function showSeriesDetail(data) {
   detailTitle.textContent = data.name
-  detailType.textContent  = 'Serie'
+  detailType.textContent  = 'Series'
   detailType.classList.remove('hidden')
 
   const seasons = (data.seasons || []).filter(s => s.season_number > 0)
@@ -226,7 +226,7 @@ function showSeriesDetail(data) {
     card.className = 'season-card'
     card.innerHTML = `
       ${poster ? `<img src="${poster}" alt="T${s.season_number}" loading="lazy" />` : ''}
-      <div class="season-label">Temporada ${s.season_number}</div>
+      <div class="season-label">Season ${s.season_number}</div>
     `
     card.addEventListener('click', () => openSeason(s.season_number, data.name))
     grid.appendChild(card)
@@ -235,7 +235,7 @@ function showSeriesDetail(data) {
 
 function showMovieDetail(data) {
   detailTitle.textContent = data.title
-  detailType.textContent  = 'Película'
+  detailType.textContent  = 'Movie'
 
   const poster = data.poster_path ? `${IMG_BASE}/w500${data.poster_path}` : null
   const year   = (data.release_date || '').slice(0,4)
@@ -261,7 +261,7 @@ function showMovieDetail(data) {
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M5 3l8 5-8 5V3z" fill="white"/>
           </svg>
-          Ver ahora
+          Watch now
         </button>
       </div>
     </div>
@@ -285,7 +285,7 @@ document.getElementById('backToEpisodes').addEventListener('click', () => {
 async function openSeason(seasonNum, serieName) {
   setLoading(true)
   state.currentSeason = seasonNum
-  episodesTitle.textContent = `${serieName} · Temporada ${seasonNum}`
+  episodesTitle.textContent = `${serieName} · Season ${seasonNum}`
 
   try {
     const data = await tmdb(`/tv/${state.currentSerieId}/season/${seasonNum}`)
@@ -323,8 +323,8 @@ function buildEpisodeItem(ep, idx) {
     </div>
     <div class="ep-body">
       <div class="ep-num">E${ep.episode_number}${ep.runtime ? ` · ${ep.runtime} min` : ''}</div>
-      <div class="ep-name">${escHtml(ep.name || 'Sin título')}</div>
-      <p class="ep-desc">${escHtml(ep.overview || 'Sin descripción.')}</p>
+      <div class="ep-name">${escHtml(ep.name || 'Untitled')}</div>
+      <p class="ep-desc">${escHtml(ep.overview || 'No description.')}</p>
     </div>
   `
   item.addEventListener('click', () => playEpisode(idx))
