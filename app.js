@@ -1,53 +1,55 @@
 
 const TMDB_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN
-const TMDB_BASE  = 'https://api.themoviedb.org/3'
-const IMG_BASE   = 'https://image.tmdb.org/t/p'
-const EMBED_TV   = 'https://moviesapi.to/tv'
-const EMBED_MOV  = 'https://moviesapi.to/movie'
+const TMDB_BASE = 'https://api.themoviedb.org/3'
+const IMG_BASE = 'https://image.tmdb.org/t/p'
+const EMBED_TV = 'https://moviesapi.to/tv'
+const EMBED_MOV = 'https://moviesapi.to/movie'
 
 // ── State ─────────────────────────────
 const state = {
-  currentSerieId:   null,
+  currentSerieId: null,
   currentSerieType: null,
-  currentSeason:    null,
-  currentEpisodes:  [],
-  currentEpIndex:   null,
-  searchPage:       1,
-  searchQuery:      '',
-  searchTotal:      0,
+  currentSeason: null,
+  currentEpisodes: [],
+  currentEpIndex: null,
+  searchPage: 1,
+  searchQuery: '',
+  searchTotal: 0,
 }
 
 // ── DOM refs ──────────────────────────
 const views = {
-  home:     document.getElementById('homeView'),
-  detail:   document.getElementById('detailView'),
+  home: document.getElementById('homeView'),
+  detail: document.getElementById('detailView'),
   episodes: document.getElementById('episodesView'),
-  player:   document.getElementById('playerView'),
+  player: document.getElementById('playerView'),
 }
-const searchInput    = document.getElementById('searchInput')
-const clearBtn       = document.getElementById('clearBtn')
-const searchResults  = document.getElementById('searchResults')
-const resultsGrid    = document.getElementById('resultsGrid')
-const resultsTitle   = document.getElementById('resultsTitle')
-const resultsCount   = document.getElementById('resultsCount')
-const loadMore       = document.getElementById('loadMore')
-const loadMoreBtn    = document.getElementById('loadMoreBtn')
-const loader         = document.getElementById('loader')
-const logoBtn        = document.getElementById('logoBtn')
-const detailTitle    = document.getElementById('detailTitle')
-const detailType     = document.getElementById('detailType')
-const detailContent  = document.getElementById('detailContent')
-const episodesTitle  = document.getElementById('episodesTitle')
-const episodesContent= document.getElementById('episodesContent')
-const playerTitle    = document.getElementById('playerTitle')
-const playerFrame    = document.getElementById('playerFrame')
-const prevEpBtn      = document.getElementById('prevEp')
-const nextEpBtn      = document.getElementById('nextEp')
+const homeRows = document.getElementById('homeRows')
+const heroText = document.querySelector('.hero-text')
+const searchInput = document.getElementById('searchInput')
+const clearBtn = document.getElementById('clearBtn')
+const searchResults = document.getElementById('searchResults')
+const resultsGrid = document.getElementById('resultsGrid')
+const resultsTitle = document.getElementById('resultsTitle')
+const resultsCount = document.getElementById('resultsCount')
+const loadMore = document.getElementById('loadMore')
+const loadMoreBtn = document.getElementById('loadMoreBtn')
+const loader = document.getElementById('loader')
+const logoBtn = document.getElementById('logoBtn')
+const detailTitle = document.getElementById('detailTitle')
+const detailType = document.getElementById('detailType')
+const detailContent = document.getElementById('detailContent')
+const episodesTitle = document.getElementById('episodesTitle')
+const episodesContent = document.getElementById('episodesContent')
+const playerTitle = document.getElementById('playerTitle')
+const playerFrame = document.getElementById('playerFrame')
+const prevEpBtn = document.getElementById('prevEp')
+const nextEpBtn = document.getElementById('nextEp')
 
 // ── API helper ────────────────────────
 async function tmdb(path, params = {}) {
   const url = new URL(TMDB_BASE + path)
-  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v))
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
   const res = await fetch(url, {
     headers: {
       accept: 'application/json',
@@ -80,19 +82,110 @@ function goHome() {
   searchInput.value = ''
   clearBtn.classList.remove('visible')
   searchResults.classList.add('hidden')
+  homeRows.classList.remove('hidden')
+  heroText.classList.remove('hidden')
   resultsGrid.innerHTML = ''
   state.searchQuery = ''
   showView('home')
 }
 
 // Featured cards
-document.querySelectorAll('.featured-card').forEach(card => {
-  card.addEventListener('click', () => {
-    const id   = +card.dataset.id
-    const type = card.dataset.type
-    openDetail(id, type)
-  })
-})
+// document.querySelectorAll('.featured-card').forEach(card => {
+//   card.addEventListener('click', () => {
+//     const id   = +card.dataset.id
+//     const type = card.dataset.type
+//     openDetail(id, type)
+//   })
+// })
+
+async function loadHomeRows() {
+  homeRows.innerHTML = ''
+  // Standard categories
+  homeRows.appendChild(await buildHomeRow('Trending Now', '/trending/all/day'))
+  homeRows.appendChild(await buildHomeRow('Popular Movies', '/movie/popular'))
+  homeRows.appendChild(await buildHomeRow('Top Rated Series', '/tv/top_rated'))
+
+  // New Netflix/AppleTV-like categories
+  homeRows.appendChild(await buildHomeRow('Upcoming in Theaters', '/movie/upcoming'))
+  homeRows.appendChild(await buildHomeRow('Airing Today (Series)', '/tv/airing_today'))
+
+  // Genre specific rows
+  homeRows.appendChild(await buildHomeRow('Action & Adventure', '/discover/movie?with_genres=28,12'))
+  homeRows.appendChild(await buildHomeRow('Sci-Fi & Fantasy', '/discover/movie?with_genres=878,14'))
+  homeRows.appendChild(await buildHomeRow('Animation', '/discover/movie?with_genres=16'))
+}
+
+async function buildHomeRow(title, path) {
+  const row = document.createElement('div')
+  row.className = 'home-row'
+
+  row.innerHTML = `
+    <div class="row-header">
+      <h2 class="row-title">${title}</h2>
+      <div class="row-nav-btns">
+        <button class="nav-btn prev" aria-label="Previous">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="nav-btn next" aria-label="Next">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="row-content"></div>
+  `
+
+  const contentEl = row.querySelector('.row-content')
+  const prevBtn = row.querySelector('.prev')
+  const nextBtn = row.querySelector('.next')
+
+  try {
+    const data = await tmdb(path)
+    const items = data.results.filter(r => r.poster_path || r.backdrop_path)
+
+    if (items.length > 0) {
+      items.forEach(item => {
+        if (!item.media_type) {
+          if (path.includes('/movie')) item.media_type = 'movie'
+          else if (path.includes('/tv')) item.media_type = 'tv'
+        }
+        contentEl.appendChild(buildResultCard(item))
+      })
+    } else {
+      contentEl.innerHTML = '<span style="color:var(--text-3);padding:0 12px">No results</span>'
+      row.querySelector('.row-nav-btns').style.display = 'none'
+    }
+
+    // Scroll logic
+    const scrollAmount = () => contentEl.clientWidth * 0.8
+    prevBtn.addEventListener('click', () => {
+      contentEl.scrollBy({ left: -scrollAmount(), behavior: 'smooth' })
+    })
+    nextBtn.addEventListener('click', () => {
+      contentEl.scrollBy({ left: scrollAmount(), behavior: 'smooth' })
+    })
+
+    // Hide arrows if not scrollable
+    const checkScroll = () => {
+      prevBtn.style.opacity = contentEl.scrollLeft <= 10 ? '0.3' : '1'
+      nextBtn.style.opacity = (contentEl.scrollLeft + contentEl.clientWidth >= contentEl.scrollWidth - 10) ? '0.3' : '1'
+    }
+    contentEl.addEventListener('scroll', checkScroll)
+    window.addEventListener('resize', checkScroll)
+    setTimeout(checkScroll, 500)
+
+  } catch (e) {
+    console.error(`Error loading row ${title}`, e)
+  }
+
+  return row
+}
+
+// Initialize
+loadHomeRows()
 
 // ── Search ────────────────────────────
 let searchTimeout = null
@@ -103,6 +196,8 @@ searchInput.addEventListener('input', () => {
   clearTimeout(searchTimeout)
   if (!q) {
     searchResults.classList.add('hidden')
+    homeRows.classList.remove('hidden')
+    heroText.classList.remove('hidden')
     return
   }
   searchTimeout = setTimeout(() => doSearch(q, 1), 380)
@@ -112,6 +207,8 @@ clearBtn.addEventListener('click', () => {
   searchInput.value = ''
   clearBtn.classList.remove('visible')
   searchResults.classList.add('hidden')
+  homeRows.classList.remove('hidden')
+  heroText.classList.remove('hidden')
   resultsGrid.innerHTML = ''
   searchInput.focus()
 })
@@ -126,7 +223,7 @@ async function doSearch(query, page = 1, append = false) {
     showView('home')
   }
   state.searchQuery = query
-  state.searchPage  = page
+  state.searchPage = page
 
   try {
     const data = await tmdb('/search/multi', { query, page, include_adult: false })
@@ -139,6 +236,8 @@ async function doSearch(query, page = 1, append = false) {
       resultsTitle.textContent = `"${query}"`
       resultsCount.textContent = `${data.total_results.toLocaleString()} results`
       searchResults.classList.remove('hidden')
+      homeRows.classList.add('hidden')
+      heroText.classList.add('hidden')
     }
 
     items.forEach(item => {
@@ -148,7 +247,7 @@ async function doSearch(query, page = 1, append = false) {
     const shown = page * data.results.length
     loadMore.classList.toggle('hidden', data.total_pages <= page || items.length === 0)
 
-  } catch(e) {
+  } catch (e) {
     console.error(e)
   } finally {
     setLoading(false)
@@ -158,7 +257,7 @@ async function doSearch(query, page = 1, append = false) {
 function buildResultCard(item) {
   const isTV = item.media_type === 'tv'
   const title = item.title || item.name || 'Untitled'
-  const year  = (item.release_date || item.first_air_date || '').slice(0,4)
+  const year = (item.release_date || item.first_air_date || '').slice(0, 4)
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null
   const poster = item.poster_path
     ? `${IMG_BASE}/w342${item.poster_path}`
@@ -169,8 +268,8 @@ function buildResultCard(item) {
   card.innerHTML = `
     <div class="result-poster">
       ${poster
-        ? `<img src="${poster}" alt="${escHtml(title)}" loading="lazy" />`
-        : `<div class="no-poster">🎬</div>`}
+      ? `<img src="${poster}" alt="${escHtml(title)}" loading="lazy" />`
+      : `<div class="no-poster">🎬</div>`}
     </div>
     <div class="result-info">
       <div class="type-pill">${isTV ? 'Series' : 'Movie'}</div>
@@ -188,7 +287,7 @@ function buildResultCard(item) {
 // ── Detail: Series / Movies ───────────
 async function openDetail(id, type) {
   setLoading(true)
-  state.currentSerieId   = id
+  state.currentSerieId = id
   state.currentSerieType = type
 
   try {
@@ -200,7 +299,7 @@ async function openDetail(id, type) {
       showMovieDetail(data)
     }
     showView('detail')
-  } catch(e) {
+  } catch (e) {
     console.error(e)
     alert('Error loading content. Check your TMDB token.')
   } finally {
@@ -210,7 +309,7 @@ async function openDetail(id, type) {
 
 function showSeriesDetail(data) {
   detailTitle.textContent = data.name
-  detailType.textContent  = 'Series'
+  detailType.textContent = 'Series'
   detailType.classList.remove('hidden')
 
   const seasons = (data.seasons || []).filter(s => s.season_number > 0)
@@ -235,13 +334,13 @@ function showSeriesDetail(data) {
 
 function showMovieDetail(data) {
   detailTitle.textContent = data.title
-  detailType.textContent  = 'Movie'
+  detailType.textContent = 'Movie'
 
   const poster = data.poster_path ? `${IMG_BASE}/w500${data.poster_path}` : null
-  const year   = (data.release_date || '').slice(0,4)
+  const year = (data.release_date || '').slice(0, 4)
   const runtime = data.runtime ? `${data.runtime} min` : ''
-  const rating  = data.vote_average ? `★ ${data.vote_average.toFixed(1)}` : ''
-  const genres  = (data.genres || []).map(g => g.name).join(' · ')
+  const rating = data.vote_average ? `★ ${data.vote_average.toFixed(1)}` : ''
+  const genres = (data.genres || []).map(g => g.name).join(' · ')
 
   detailContent.innerHTML = `
     <div class="movie-detail">
@@ -298,7 +397,7 @@ async function openSeason(seasonNum, serieName) {
     })
 
     showView('episodes')
-  } catch(e) {
+  } catch (e) {
     console.error(e)
   } finally {
     setLoading(false)
@@ -312,8 +411,8 @@ function buildEpisodeItem(ep, idx) {
   item.innerHTML = `
     <div class="ep-thumb">
       ${thumb
-        ? `<img src="${thumb}" alt="E${ep.episode_number}" loading="lazy" />`
-        : `<div class="ep-no-thumb">▶</div>`}
+      ? `<img src="${thumb}" alt="E${ep.episode_number}" loading="lazy" />`
+      : `<div class="ep-no-thumb">▶</div>`}
       <div class="ep-play-overlay">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
           <circle cx="16" cy="16" r="16" fill="rgba(255,255,255,0.15)"/>
@@ -351,7 +450,7 @@ function playMovie(id, title) {
   playerTitle.textContent = title
   playerFrame.src = url
   state.currentEpisodes = []
-  state.currentEpIndex  = null
+  state.currentEpIndex = null
   prevEpBtn.disabled = true
   nextEpBtn.disabled = true
   showView('player')
@@ -367,5 +466,5 @@ nextEpBtn.addEventListener('click', () => {
 
 // ── Utils ─────────────────────────────
 function escHtml(str = '') {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
