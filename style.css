@@ -24,8 +24,8 @@
   --shadow:        0 8px 40px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3);
   --shadow-card:   0 20px 60px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4);
   --ease:          cubic-bezier(0.23, 1, 0.32, 1);
-  --font-display:  'Instrument Serif', Georgia, serif;
-  --font-ui:       'DM Sans', system-ui, sans-serif;
+  --font-display:  'Outfit', system-ui, sans-serif;
+  --font-ui:       'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
 /* ── Reset ── */
@@ -39,6 +39,7 @@ body {
   font-family: var(--font-ui);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
