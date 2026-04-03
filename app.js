@@ -2,8 +2,66 @@
 const TMDB_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const IMG_BASE = 'https://image.tmdb.org/t/p'
-const EMBED_TV = 'https://moviesapi.to/tv'
-const EMBED_MOV = 'https://moviesapi.to/movie'
+
+// ── Sources ───────────────────────────
+const SOURCES = {
+  moviesapi: {
+    name: 'MoviesAPI (Default)',
+    getMovie: (id) => `https://moviesapi.to/movie/${id}`,
+    getTv: (id, s, e) => `https://moviesapi.to/tv/${id}-${s}-${e}`
+  },
+  vidsrc: {
+    name: 'VidSrc',
+    getMovie: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`,
+    getTv: (id, s, e) => `https://vidsrc.me/embed/tv?tmdb=${id}&season=${s}&episode=${e}`
+  },
+  vidrock: {
+    name: 'VidRock',
+    getMovie: (id) => `https://vidrock.net/movie/${id}`,
+    getTv: (id, s, e) => `https://vidrock.net/tv/${id}-${s}-${e}`
+  },
+  '111movies': {
+    name: '111Movies',
+    getMovie: (id) => `https://111movies.com/movie/${id}`,
+    getTv: (id, s, e) => `https://111movies.com/tv/${id}-${s}-${e}`
+  },
+  vidzee: {
+    name: 'VidZee',
+    getMovie: (id) => `https://vidzee.net/movie/${id}`,
+    getTv: (id, s, e) => `https://vidzee.net/tv/${id}-${s}-${e}`
+  },
+  videasy: {
+    name: 'VidEasy',
+    getMovie: (id) => `https://videasy.net/movie/${id}`,
+    getTv: (id, s, e) => `https://videasy.net/tv/${id}-${s}-${e}`
+  },
+  vidnest: {
+    name: 'VidNest',
+    getMovie: (id) => `https://vidnest.net/movie/${id}`,
+    getTv: (id, s, e) => `https://vidnest.net/tv/${id}-${s}-${e}`
+  },
+  rivestream: {
+    name: 'RiveStream',
+    getMovie: (id) => `https://rivestream.live/watch?type=movie&id=${id}`,
+    getTv: (id, s, e) => `https://rivestream.live/watch?type=tv&id=${id}&season=${s}&episode=${e}`
+  },
+  vidlink: {
+    name: 'VidLink',
+    getMovie: (id) => `https://vidlink.pro/movie/${id}?player=primary`,
+    getTv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?player=primary`
+  },
+  'vidsrc.xyz': {
+    name: 'VidSrc.xyz',
+    getMovie: (id) => `https://vidsrc.xyz/embed/movie?tmdb=${id}`,
+    getTv: (id, s, e) => `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}`
+  },
+  'vidsrc.icu': {
+    name: 'VidSrc.icu',
+    getMovie: (id) => `https://vidsrc.icu/embed/movie/${id}`,
+    getTv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}`
+  }
+}
+let activeSourceKey = localStorage.getItem('kiroshi_source') || 'moviesapi';
 
 // ── State ─────────────────────────────
 const state = {
@@ -45,6 +103,28 @@ const playerTitle = document.getElementById('playerTitle')
 const playerFrame = document.getElementById('playerFrame')
 const prevEpBtn = document.getElementById('prevEp')
 const nextEpBtn = document.getElementById('nextEp')
+const serverSelect = document.getElementById('serverSelect')
+const playerBackText = document.getElementById('playerBackText')
+
+// Setup source selector
+Object.entries(SOURCES).forEach(([key, src]) => {
+  const opt = document.createElement('option')
+  opt.value = key
+  opt.textContent = src.name
+  if (key === activeSourceKey) opt.selected = true
+  serverSelect.appendChild(opt)
+})
+
+serverSelect.addEventListener('change', (e) => {
+  activeSourceKey = e.target.value
+  localStorage.setItem('kiroshi_source', activeSourceKey)
+  // Reload current video if player is active
+  if (state.currentEpIndex !== null && state.currentEpisodes.length > 0) {
+    playEpisode(state.currentEpIndex)
+  } else if (state.currentSerieId) {
+    playMovie(state.currentSerieId, playerTitle.textContent)
+  }
+})
 
 // ── API helper ────────────────────────
 async function tmdb(path, params = {}) {
@@ -372,12 +452,18 @@ function showMovieDetail(data) {
 }
 
 // ── Season / Episodes ─────────────────
-document.getElementById('backToHome').addEventListener('click', goHome)
+document.getElementById('backToHome').addEventListener('click', () => {
+  showView('home')
+})
 document.getElementById('backToSeasons').addEventListener('click', () => {
   showView('detail')
 })
 document.getElementById('backToEpisodes').addEventListener('click', () => {
-  showView('episodes')
+  if (state.currentSerieType === 'movie') {
+    showView('detail')
+  } else {
+    showView('episodes')
+  }
   playerFrame.src = ''
 })
 
@@ -434,7 +520,8 @@ function buildEpisodeItem(ep, idx) {
 function playEpisode(idx) {
   state.currentEpIndex = idx
   const ep = state.currentEpisodes[idx]
-  const url = `${EMBED_TV}/${state.currentSerieId}-${state.currentSeason}-${ep.episode_number}`
+  const source = SOURCES[activeSourceKey] || SOURCES['moviesapi']
+  const url = source.getTv(state.currentSerieId, state.currentSeason, ep.episode_number)
 
   playerTitle.textContent = `T${state.currentSeason} E${ep.episode_number} – ${ep.name}`
   playerFrame.src = url
@@ -442,17 +529,23 @@ function playEpisode(idx) {
   prevEpBtn.disabled = idx === 0
   nextEpBtn.disabled = idx === state.currentEpisodes.length - 1
 
+  if (playerBackText) playerBackText.textContent = 'Episodes'
+
   showView('player')
 }
 
 function playMovie(id, title) {
-  const url = `${EMBED_MOV}/${id}`
+  const source = SOURCES[activeSourceKey] || SOURCES['moviesapi']
+  const url = source.getMovie(id)
   playerTitle.textContent = title
   playerFrame.src = url
   state.currentEpisodes = []
   state.currentEpIndex = null
   prevEpBtn.disabled = true
   nextEpBtn.disabled = true
+  
+  if (playerBackText) playerBackText.textContent = 'Details'
+  
   showView('player')
 }
 
