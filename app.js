@@ -108,6 +108,7 @@ const playerFrame = document.getElementById('playerFrame')
 const prevEpBtn = document.getElementById('prevEp')
 const nextEpBtn = document.getElementById('nextEp')
 const serverSelect = document.getElementById('serverSelect')
+const nextSourceBtn = document.getElementById('nextSourceBtn')
 const playerBackText = document.getElementById('playerBackText')
 
 // Setup source selector
@@ -118,6 +119,25 @@ Object.entries(SOURCES).forEach(([key, src]) => {
   if (key === activeSourceKey) opt.selected = true
   serverSelect.appendChild(opt)
 })
+
+nextSourceBtn.addEventListener('click', tryNextSource)
+
+function tryNextSource() {
+  const keys = Object.keys(SOURCES)
+  let currentIndex = keys.indexOf(activeSourceKey)
+  let nextIndex = (currentIndex + 1) % keys.length
+  activeSourceKey = keys[nextIndex]
+  
+  serverSelect.value = activeSourceKey
+  localStorage.setItem('kiroshi_source', activeSourceKey)
+  
+  // Reload current
+  if (state.currentEpIndex !== null && state.currentEpisodes.length > 0) {
+    playEpisode(state.currentEpIndex)
+  } else if (state.currentSerieId) {
+    playMovie(state.currentSerieId, playerTitle.textContent)
+  }
+}
 
 serverSelect.addEventListener('change', (e) => {
   activeSourceKey = e.target.value
@@ -386,6 +406,10 @@ function toggleFavorite(item) {
   if (favs[item.id]) delete favs[item.id]
   else favs[item.id] = item
   localStorage.setItem('kiroshi_favs', JSON.stringify(favs))
+  
+  // Dispatch custom event for real-time UI updates
+  window.dispatchEvent(new Event('storage'))
+  
   return !favs[item.id]
 }
 
@@ -393,6 +417,35 @@ function isFavorite(id) {
   return !!getFavorites()[id]
 }
 
+// Listen for storage changes to update UI in real-time
+window.addEventListener('storage', () => {
+  // Update Favs view if active
+  if (views.favs.classList.contains('active')) {
+    openFavs()
+  }
+  
+  // Update all result-cards in the DOM
+  document.querySelectorAll('.result-card').forEach(card => {
+    // This is a simplified check, requires unique identifiers on cards
+    // In a more complex app, we'd use a better data-binding approach.
+  })
+  
+  // Refresh UI icons
+  updateAllFavIcons()
+})
+
+function updateAllFavIcons() {
+  document.querySelectorAll('.result-card').forEach(card => {
+    const id = card.dataset.id
+    if (id) {
+      const isFav = isFavorite(id)
+      const btn = card.querySelector('.fav-btn')
+      if (btn) btn.classList.toggle('active', isFav)
+    }
+  })
+}
+
+// Improved buildResultCard to support real-time updates
 function buildResultCard(item) {
   const isTV = item.media_type === 'tv'
   const title = item.title || item.name || 'Untitled'
@@ -404,6 +457,7 @@ function buildResultCard(item) {
 
   const card = document.createElement('div')
   card.className = 'result-card'
+  card.dataset.id = item.id // Added for easier identification
   
   const fav = isFavorite(item.id)
   
@@ -430,7 +484,9 @@ function buildResultCard(item) {
   
   card.querySelector('.fav-btn').addEventListener('click', (e) => {
     e.stopPropagation()
-    const isNowFav = toggleFavorite(item)
+    toggleFavorite(item)
+    // Re-check state directly from storage for absolute accuracy
+    const isNowFav = isFavorite(item.id)
     card.querySelector('.fav-btn').classList.toggle('active', isNowFav)
   })
 

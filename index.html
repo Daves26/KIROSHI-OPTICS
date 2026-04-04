@@ -139,20 +139,21 @@
           <span id="playerBackText">Episodes</span>
         </button>
         <h2 id="playerTitle"></h2>
-        <div class="player-controls">
-          <div class="source-selector">
-            <label for="serverSelect">Source:</label>
-            <select id="serverSelect" class="btn-glass select-glass"></select>
-          </div>
-          <div class="ep-nav-wrap">
+        <div class="ep-nav-wrap">
             <button class="btn-glass" id="prevEp" disabled>‹ Previous</button>
             <button class="btn-glass" id="nextEp" disabled>Next ›</button>
-          </div>
         </div>
       </div>
       <div class="player-wrap">
         <iframe id="playerFrame" allowfullscreen
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+      </div>
+      <div class="player-footer">
+        <div class="source-selector">
+            <label for="serverSelect">Source:</label>
+            <select id="serverSelect" class="btn-glass select-glass"></select>
+        </div>
+        <button class="btn-glass" id="nextSourceBtn">Next Source</button>
       </div>
     </section>
 

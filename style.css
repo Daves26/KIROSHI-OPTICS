@@ -707,6 +707,19 @@ body {
 }
 
 /* ── Player ── */
+.player-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  gap: 16px;
+  padding: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--blur-sm);
+}
+
 .player-controls {
   display: flex;
   align-items: center;
