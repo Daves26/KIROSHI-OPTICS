@@ -81,6 +81,7 @@ const views = {
   detail: document.getElementById('detailView'),
   episodes: document.getElementById('episodesView'),
   player: document.getElementById('playerView'),
+  favs: document.getElementById('favsView'),
 }
 const homeRows = document.getElementById('homeRows')
 const heroText = document.querySelector('.hero-text')
@@ -94,6 +95,9 @@ const loadMore = document.getElementById('loadMore')
 const loadMoreBtn = document.getElementById('loadMoreBtn')
 const loader = document.getElementById('loader')
 const logoBtn = document.getElementById('logoBtn')
+const favsBtn = document.getElementById('favsBtn')
+const favsGrid = document.getElementById('favsGrid')
+const backToHomeFavs = document.getElementById('backToHomeFavs')
 const detailTitle = document.getElementById('detailTitle')
 const detailType = document.getElementById('detailType')
 const detailContent = document.getElementById('detailContent')
@@ -170,6 +174,17 @@ function setLoading(on) {
 
 // ── Home ──────────────────────────────
 logoBtn.addEventListener('click', goHome)
+favsBtn.addEventListener('click', openFavs)
+backToHomeFavs.addEventListener('click', goHome)
+
+function openFavs() {
+  favsGrid.innerHTML = ''
+  const favs = Object.values(getFavorites())
+  favs.forEach(item => {
+    favsGrid.appendChild(buildResultCard(item))
+  })
+  showView('favs')
+}
 
 function goHome() {
   if (document.startViewTransition) {
@@ -361,6 +376,23 @@ async function doSearch(query, page = 1, append = false) {
   }
 }
 
+// ── Favorites Logic ───────────────────
+function getFavorites() {
+  return JSON.parse(localStorage.getItem('kiroshi_favs') || '{}')
+}
+
+function toggleFavorite(item) {
+  const favs = getFavorites()
+  if (favs[item.id]) delete favs[item.id]
+  else favs[item.id] = item
+  localStorage.setItem('kiroshi_favs', JSON.stringify(favs))
+  return !favs[item.id]
+}
+
+function isFavorite(id) {
+  return !!getFavorites()[id]
+}
+
 function buildResultCard(item) {
   const isTV = item.media_type === 'tv'
   const title = item.title || item.name || 'Untitled'
@@ -372,7 +404,15 @@ function buildResultCard(item) {
 
   const card = document.createElement('div')
   card.className = 'result-card'
+  
+  const fav = isFavorite(item.id)
+  
   card.innerHTML = `
+    <button class="fav-btn ${fav ? 'active' : ''}" aria-label="Favorite">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+      </svg>
+    </button>
     <div class="result-poster">
       ${poster
       ? `<img src="${poster}" alt="${escHtml(title)}" loading="lazy" />`
@@ -387,6 +427,13 @@ function buildResultCard(item) {
       </div>
     </div>
   `
+  
+  card.querySelector('.fav-btn').addEventListener('click', (e) => {
+    e.stopPropagation()
+    const isNowFav = toggleFavorite(item)
+    card.querySelector('.fav-btn').classList.toggle('active', isNowFav)
+  })
+
   card.addEventListener('click', () => openDetail(item.id, item.media_type))
   return card
 }
@@ -463,18 +510,28 @@ function showMovieDetail(data) {
           ${genres ? `<span class="meta-chip">${escHtml(genres)}</span>` : ''}
         </div>
         ${data.overview ? `<p class="movie-overview">${escHtml(data.overview)}</p>` : ''}
-        <button class="watch-btn" id="watchMovieBtn">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M5 3l8 5-8 5V3z" fill="white"/>
-          </svg>
-          Watch now
-        </button>
+        <div class="flex gap-2">
+          <button class="btn-action watch-btn" id="watchMovieBtn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M5 3l8 5-8 5V3z" fill="white"/>
+            </svg>
+            Watch now
+          </button>
+          <button class="btn-action fav-add-btn" id="favMovieBtn">
+            ${isFavorite(data.id) ? '♥ Favorited' : '♥ Add to Watchlist'}
+          </button>
+        </div>
       </div>
     </div>
   `
 
   document.getElementById('watchMovieBtn').addEventListener('click', () => {
     playMovie(data.id, data.title)
+  })
+  
+  document.getElementById('favMovieBtn').addEventListener('click', (e) => {
+    const isNowFav = toggleFavorite({ id: data.id, title: data.title, poster_path: data.poster_path, media_type: 'movie' })
+    e.target.textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
   })
 }
 

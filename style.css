@@ -338,16 +338,40 @@ body {
   font-weight: 300;
 }
 
-/* ── Search Results ── */
-.search-results {
-  margin-top: 56px;
-  transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
+.fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--blur-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease), transform 0.2s, background 0.2s;
+  z-index: 10;
+  color: var(--text-3);
+}
+
+.result-card:hover .fav-btn, .featured-card:hover .fav-btn {
   opacity: 1;
 }
-.search-results.hidden { 
-  display: none; 
-  opacity: 0;
-  transform: translateY(20px);
+
+.fav-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  transform: scale(1.1);
+}
+
+.fav-btn.active {
+  opacity: 1;
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .results-header {
@@ -811,23 +835,45 @@ body {
   font-weight: 300;
   max-width: 600px;
 }
-.watch-btn {
+.flex.gap-2 {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-action {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--purple));
-  color: white;
-  border: none;
+  height: 48px;
+  padding: 0 24px;
   border-radius: 100px;
-  padding: 0.7rem 1.6rem;
   font-size: 0.9rem;
   font-family: var(--font-ui);
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.2s;
-  width: fit-content;
+  white-space: nowrap;
+}
+
+.watch-btn {
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  color: white;
+  border: none;
 }
 .watch-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+.fav-add-btn {
+  background: var(--glass-bg);
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--blur-sm);
+}
+.fav-add-btn:hover {
+  background: var(--glass-bg-deep);
+  border-color: var(--glass-border-h);
+  transform: translateY(-2px);
+}
 
 /* ── Home Rows ── */
 .home-rows {
