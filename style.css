@@ -7,16 +7,16 @@
   --accent-soft:   rgba(207, 102, 121, 0.18);
   --accent-glow:   rgba(207, 102, 121, 0.35);
   --purple:        #7C4DFF;
-  --bg:            #080810;
-  --bg-2:          #0e0e1a;
-  --text:          #f0f0f5;
-  --text-2:        rgba(240,240,245,0.6);
-  --text-3:        rgba(240,240,245,0.35);
+  --bg:            #0d0d1a;
+  --bg-2:          #16162a;
   --glass-bg:      rgba(255,255,255,0.06);
   --glass-bg-deep: rgba(255,255,255,0.12);
   --glass-border:  1px solid rgba(255,255,255,0.12);
   --glass-border-h:1px solid rgba(255,255,255,0.25);
   --glass-glow:    inset 0 1px 1px rgba(255,255,255,0.15);
+  --text:          #f0f0f5;
+  --text-2:        rgba(240,240,245,0.6);
+  --text-3:        rgba(240,240,245,0.35);
   --radius:        18px;
   --radius-sm:     12px;
   --radius-xs:     8px;
@@ -52,42 +52,40 @@ body {
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  transition: transform 0.1s ease-out;
+  will-change: transform;
 }
 
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.4;
-  animation: drift 20s ease-in-out infinite alternate;
+  filter: blur(120px);
+  opacity: 0.7;
+  animation: liquid 40s ease-in-out infinite alternate;
+  will-change: transform, opacity;
 }
 
 .orb1 {
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(207,102,121,0.5), transparent 70%);
-  top: -200px; left: -150px;
-  animation-duration: 18s;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(207,102,121,0.8), transparent 70%);
+  top: -100px; left: -100px;
 }
 .orb2 {
-  width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(124,77,255,0.4), transparent 70%);
-  bottom: -100px; right: -100px;
-  animation-duration: 22s;
-  animation-delay: -8s;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(124,77,255,0.7), transparent 70%);
+  bottom: -50px; right: -50px;
 }
 .orb3 {
-  width: 350px; height: 350px;
-  background: radial-gradient(circle, rgba(100,140,255,0.3), transparent 70%);
-  top: 50%; left: 50%;
-  animation-duration: 25s;
-  animation-delay: -4s;
+  width: 450px; height: 450px;
+  background: radial-gradient(circle, rgba(100,140,255,0.6), transparent 70%);
+  top: 40%; left: 40%;
 }
 
-@keyframes drift {
-  0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(40px, -60px) scale(1.05); }
-  66%  { transform: translate(-30px, 40px) scale(0.95); }
-  100% { transform: translate(20px, -20px) scale(1.02); }
+@keyframes liquid {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33%  { transform: translate(100px, -50px) scale(1.2) rotate(45deg); }
+  66%  { transform: translate(-50px, 100px) scale(0.9) rotate(-45deg); }
+  100% { transform: translate(20px, 20px) scale(1.1) rotate(10deg); }
 }
 
 /* ── Header ── */
@@ -343,9 +341,14 @@ body {
 /* ── Search Results ── */
 .search-results {
   margin-top: 56px;
-  animation: fadeUp 0.3s var(--ease) both;
+  transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
+  opacity: 1;
 }
-.search-results.hidden { display: none; }
+.search-results.hidden { 
+  display: none; 
+  opacity: 0;
+  transform: translateY(20px);
+}
 
 .results-header {
   display: flex;
@@ -743,26 +746,21 @@ body {
   border: none;
 }
 
-/* ── Loader ── */
-.loader {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(8,8,16,0.6);
-  backdrop-filter: var(--blur-sm);
-  z-index: 200;
+/* ── Skeleton Loading ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--glass-bg) 25%, var(--glass-bg-deep) 50%, var(--glass-bg) 75%);
+  background-size: 200% 100%;
+  animation: pulse 1.5s infinite;
+  border-radius: var(--radius-sm);
 }
-.loader.hidden { display: none; }
-.loader-ring {
-  width: 40px; height: 40px;
-  border: 2px solid var(--glass-border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+@keyframes pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── View Transitions (Global) ── */
+::view-transition-group(*) { animation-duration: 0.4s; }
+::view-transition-old(*), ::view-transition-new(*) { mix-blend-mode: normal; }
 
 /* ── Movie detail page ── */
 .movie-detail {

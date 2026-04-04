@@ -144,9 +144,22 @@ async function tmdb(path, params = {}) {
 function showView(name) {
   // Si salimos del player, vaciamos el src para cortar audio/video
   if (name !== 'player') playerFrame.src = ''
+  
+  // Use View Transitions API if available
+  if (document.startViewTransition) {
+    document.startViewTransition(() => {
+      updateViewClasses(name)
+    })
+  } else {
+    updateViewClasses(name)
+  }
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function updateViewClasses(name) {
   Object.values(views).forEach(v => v.classList.remove('active'))
   views[name].classList.add('active')
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 
@@ -159,14 +172,28 @@ function setLoading(on) {
 logoBtn.addEventListener('click', goHome)
 
 function goHome() {
-  searchInput.value = ''
-  clearBtn.classList.remove('visible')
-  searchResults.classList.add('hidden')
-  homeRows.classList.remove('hidden')
-  heroText.classList.remove('hidden')
-  resultsGrid.innerHTML = ''
-  state.searchQuery = ''
-  showView('home')
+  if (document.startViewTransition) {
+    document.startViewTransition(() => {
+      searchInput.value = ''
+      clearBtn.classList.remove('visible')
+      searchResults.classList.add('hidden')
+      homeRows.classList.remove('hidden')
+      heroText.classList.remove('hidden')
+      resultsGrid.innerHTML = ''
+      state.searchQuery = ''
+      updateViewClasses('home')
+    })
+  } else {
+    searchInput.value = ''
+    clearBtn.classList.remove('visible')
+    searchResults.classList.add('hidden')
+    homeRows.classList.remove('hidden')
+    heroText.classList.remove('hidden')
+    resultsGrid.innerHTML = ''
+    state.searchQuery = ''
+    updateViewClasses('home')
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 // Featured cards
@@ -280,7 +307,7 @@ searchInput.addEventListener('input', () => {
     heroText.classList.remove('hidden')
     return
   }
-  searchTimeout = setTimeout(() => doSearch(q, 1), 380)
+  searchTimeout = setTimeout(() => doSearch(q, 1), 700)
 })
 
 clearBtn.addEventListener('click', () => {
@@ -299,8 +326,13 @@ loadMoreBtn.addEventListener('click', () => {
 
 async function doSearch(query, page = 1, append = false) {
   if (!append) {
-    setLoading(true)
     showView('home')
+    resultsGrid.innerHTML = ''
+    // Show 6 skeletons
+    for(let i=0; i<6; i++) resultsGrid.appendChild(buildSkeletonCard())
+    searchResults.classList.remove('hidden')
+    homeRows.classList.add('hidden')
+    heroText.classList.add('hidden')
   }
   state.searchQuery = query
   state.searchPage = page
@@ -315,9 +347,6 @@ async function doSearch(query, page = 1, append = false) {
       resultsGrid.innerHTML = ''
       resultsTitle.textContent = `"${query}"`
       resultsCount.textContent = `${data.total_results.toLocaleString()} results`
-      searchResults.classList.remove('hidden')
-      homeRows.classList.add('hidden')
-      heroText.classList.add('hidden')
     }
 
     items.forEach(item => {
@@ -329,8 +358,6 @@ async function doSearch(query, page = 1, append = false) {
 
   } catch (e) {
     console.error(e)
-  } finally {
-    setLoading(false)
   }
 }
 
@@ -561,3 +588,20 @@ nextEpBtn.addEventListener('click', () => {
 function escHtml(str = '') {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
+
+function buildSkeletonCard() {
+  const card = document.createElement('div')
+  card.className = 'result-card skeleton'
+  card.style.height = '240px' // Similar height to result-card
+  return card
+}
+
+// ── Micro-parallax ────────────────────
+const orbs = document.querySelector('.bg-orbs')
+window.addEventListener('mousemove', (e) => {
+  const x = (e.clientX / window.innerWidth - 0.5) * 20
+  const y = (e.clientY / window.innerHeight - 0.5) * 20
+  requestAnimationFrame(() => {
+    orbs.style.transform = `translate(${-x}px, ${-y}px)`
+  })
+})
