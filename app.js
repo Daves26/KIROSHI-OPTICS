@@ -3,6 +3,105 @@ const TMDB_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const IMG_BASE = 'https://image.tmdb.org/t/p'
 
+// ═══════════════════════════════════════
+// PERFORMANCE: API Cache with expiration
+// ═══════════════════════════════════════
+const CACHE_TTL = 1000 * 60 * 30 // 30 minutes
+const CACHE_KEY = 'kiroshi_api_cache'
+
+function getCached(key) {
+  try {
+    const raw = localStorage.getItem(`${CACHE_KEY}_${key}`)
+    if (!raw) return null
+    const { data, expires } = JSON.parse(raw)
+    if (Date.now() > expires) {
+      localStorage.removeItem(`${CACHE_KEY}_${key}`)
+      return null
+    }
+    return data
+  } catch { return null }
+}
+
+function setCache(key, data) {
+  try {
+    const item = { data, expires: Date.now() + CACHE_TTL }
+    localStorage.setItem(`${CACHE_KEY}_${key}`, JSON.stringify(item))
+  } catch { /* quota exceeded - silently fail */ }
+}
+
+function clearCache() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY))
+  keys.forEach(k => localStorage.removeItem(k))
+}
+
+// ═══════════════════════════════════════
+// PERFORMANCE: Debounce utility
+// ═══════════════════════════════════════
+function debounce(fn, delay) {
+  let timer = null
+  return (...args) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }
+}
+
+// ═══════════════════════════════════════
+// PERFORMANCE: Throttle utility
+// ═══════════════════════════════════════
+function throttle(fn, limit) {
+  let inThrottle = false
+  return (...args) => {
+    if (!inThrottle) {
+      fn(...args)
+      inThrottle = true
+      setTimeout(() => { inThrottle = false }, limit)
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+// PERFORMANCE: Image Prefetcher
+// ═══════════════════════════════════════
+const prefetchCache = new Set()
+const prefetchQueue = []
+let prefetching = false
+
+function prefetchImage(src) {
+  if (!src || prefetchCache.has(src)) return
+  prefetchCache.add(src)
+  prefetchQueue.push(src)
+  if (!prefetching) processPrefetchQueue()
+}
+
+function processPrefetchQueue() {
+  if (prefetchQueue.length === 0) { prefetching = false; return }
+  prefetching = true
+  const link = document.createElement('link')
+  link.rel = 'prefetch'
+  link.as = 'image'
+  link.href = prefetchQueue.shift()
+  document.head.appendChild(link)
+  // Process next batch with small delay to avoid blocking
+  setTimeout(processPrefetchQueue, 50)
+}
+
+// ═══════════════════════════════════════
+// PERFORMANCE: IntersectionObserver for lazy loading rows
+// ═══════════════════════════════════════
+const rowObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const row = entry.target
+      const loadFn = row._loadRowData
+      if (loadFn && !row._loaded) {
+        row._loaded = true
+        loadFn()
+      }
+      rowObserver.unobserve(row)
+    }
+  })
+}, { rootMargin: '200px' }) // Start loading 200px before visible
+
 // ── Sources ───────────────────────────
 const SOURCES = {
   moviesapi: {
@@ -150,10 +249,17 @@ serverSelect.addEventListener('change', (e) => {
   }
 })
 
-// ── API helper ────────────────────────
+// ── API helper with caching ───────────
 async function tmdb(path, params = {}) {
   const url = new URL(TMDB_BASE + path)
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+  const cacheKey = url.toString()
+
+  // Check cache first
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  // Fetch from API
   const res = await fetch(url, {
     headers: {
       accept: 'application/json',
@@ -161,7 +267,11 @@ async function tmdb(path, params = {}) {
     }
   })
   if (!res.ok) throw new Error(`TMDB ${res.status}`)
-  return res.json()
+  const data = await res.json()
+
+  // Store in cache
+  setCache(cacheKey, data)
+  return data
 }
 
 // ── View router ───────────────────────
@@ -284,46 +394,81 @@ async function buildHomeRow(title, path) {
   const prevBtn = row.querySelector('.prev')
   const nextBtn = row.querySelector('.next')
 
-  try {
-    const data = await tmdb(path)
-    const items = data.results.filter(r => r.poster_path || r.backdrop_path)
+  // PERFORMANCE: Lazy load row data with IntersectionObserver
+  row._loadRowData = async () => {
+    // Show skeleton placeholders
+    for (let i = 0; i < 8; i++) {
+      contentEl.appendChild(buildSkeletonCard())
+    }
 
-    if (items.length > 0) {
-      items.forEach(item => {
-        if (!item.media_type) {
-          if (path.includes('/movie')) item.media_type = 'movie'
-          else if (path.includes('/tv')) item.media_type = 'tv'
-        }
-        contentEl.appendChild(buildResultCard(item))
+    try {
+      const data = await tmdb(path)
+      const items = data.results.filter(r => r.poster_path || r.backdrop_path)
+
+      contentEl.innerHTML = '' // Clear skeletons
+
+      if (items.length > 0) {
+        items.forEach(item => {
+          if (!item.media_type) {
+            if (path.includes('/movie')) item.media_type = 'movie'
+            else if (path.includes('/tv')) item.media_type = 'tv'
+          }
+          contentEl.appendChild(buildResultCard(item, true))
+        })
+
+        // PERFORMANCE: Prefetch images on hover
+        setupRowPrefetching(contentEl)
+      } else {
+        contentEl.innerHTML = '<span style="color:var(--text-3);padding:0 12px">No results</span>'
+        row.querySelector('.row-nav-btns').style.display = 'none'
+      }
+
+      // Scroll logic
+      const scrollAmount = () => contentEl.clientWidth * 0.8
+      prevBtn.addEventListener('click', () => {
+        contentEl.scrollBy({ left: -scrollAmount(), behavior: 'smooth' })
       })
-    } else {
-      contentEl.innerHTML = '<span style="color:var(--text-3);padding:0 12px">No results</span>'
-      row.querySelector('.row-nav-btns').style.display = 'none'
+      nextBtn.addEventListener('click', () => {
+        contentEl.scrollBy({ left: scrollAmount(), behavior: 'smooth' })
+      })
+
+      // Hide arrows if not scrollable
+      const checkScroll = () => {
+        prevBtn.style.opacity = contentEl.scrollLeft <= 10 ? '0.3' : '1'
+        nextBtn.style.opacity = (contentEl.scrollLeft + contentEl.clientWidth >= contentEl.scrollWidth - 10) ? '0.3' : '1'
+      }
+      contentEl.addEventListener('scroll', checkScroll)
+      window.addEventListener('resize', checkScroll)
+      setTimeout(checkScroll, 500)
+
+    } catch (e) {
+      console.error(`Error loading row ${title}`, e)
+      contentEl.innerHTML = '<span style="color:var(--text-3);padding:0 12px">Failed to load</span>'
     }
-
-    // Scroll logic
-    const scrollAmount = () => contentEl.clientWidth * 0.8
-    prevBtn.addEventListener('click', () => {
-      contentEl.scrollBy({ left: -scrollAmount(), behavior: 'smooth' })
-    })
-    nextBtn.addEventListener('click', () => {
-      contentEl.scrollBy({ left: scrollAmount(), behavior: 'smooth' })
-    })
-
-    // Hide arrows if not scrollable
-    const checkScroll = () => {
-      prevBtn.style.opacity = contentEl.scrollLeft <= 10 ? '0.3' : '1'
-      nextBtn.style.opacity = (contentEl.scrollLeft + contentEl.clientWidth >= contentEl.scrollWidth - 10) ? '0.3' : '1'
-    }
-    contentEl.addEventListener('scroll', checkScroll)
-    window.addEventListener('resize', checkScroll)
-    setTimeout(checkScroll, 500)
-
-  } catch (e) {
-    console.error(`Error loading row ${title}`, e)
   }
 
+  // Observe for lazy loading
+  rowObserver.observe(row)
+
   return row
+}
+
+// PERFORMANCE: Setup prefetching on row hover
+function setupRowPrefetching(contentEl) {
+  const cards = contentEl.querySelectorAll('.result-card')
+  cards.forEach(card => {
+    card.addEventListener('mouseenter', () => {
+      const img = card.querySelector('img')
+      if (img && img.src) {
+        // Prefetch this and next 2 images
+        const allImages = Array.from(contentEl.querySelectorAll('.result-card img'))
+        const idx = allImages.indexOf(img)
+        for (let i = idx; i < Math.min(idx + 3, allImages.length); i++) {
+          prefetchImage(allImages[i].src)
+        }
+      }
+    }, { passive: true })
+  })
 }
 
 // Initialize
@@ -385,7 +530,7 @@ async function doSearch(query, page = 1, append = false) {
     }
 
     items.forEach(item => {
-      resultsGrid.appendChild(buildResultCard(item))
+      resultsGrid.appendChild(buildResultCard(item, true))
     })
 
     const shown = page * data.results.length
@@ -446,7 +591,7 @@ function updateAllFavIcons() {
 }
 
 // Improved buildResultCard to support real-time updates
-function buildResultCard(item) {
+function buildResultCard(item, enablePrefetch = false) {
   const isTV = item.media_type === 'tv'
   const title = item.title || item.name || 'Untitled'
   const year = (item.release_date || item.first_air_date || '').slice(0, 4)
@@ -458,9 +603,9 @@ function buildResultCard(item) {
   const card = document.createElement('div')
   card.className = 'result-card'
   card.dataset.id = item.id // Added for easier identification
-  
+
   const fav = isFavorite(item.id)
-  
+
   card.innerHTML = `
     <button class="fav-btn ${fav ? 'active' : ''}" aria-label="Favorite">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -491,6 +636,15 @@ function buildResultCard(item) {
   })
 
   card.addEventListener('click', () => openDetail(item.id, item.media_type))
+
+  // PERFORMANCE: Prefetch images on hover for search results
+  if (enablePrefetch) {
+    card.addEventListener('mouseenter', () => {
+      const img = card.querySelector('img')
+      if (img && img.src) prefetchImage(img.src)
+    }, { passive: true })
+  }
+
   return card
 }
 
@@ -709,12 +863,14 @@ function buildSkeletonCard() {
   return card
 }
 
-// ── Micro-parallax ────────────────────
+// ── Micro-parallax (throttled) ────────
 const orbs = document.querySelector('.bg-orbs')
-window.addEventListener('mousemove', (e) => {
+const handleParallax = throttle((e) => {
   const x = (e.clientX / window.innerWidth - 0.5) * 20
   const y = (e.clientY / window.innerHeight - 0.5) * 20
   requestAnimationFrame(() => {
     orbs.style.transform = `translate(${-x}px, ${-y}px)`
   })
-})
+}, 16) // ~60fps max
+
+window.addEventListener('mousemove', handleParallax, { passive: true })
