@@ -666,20 +666,58 @@ function showSeriesDetail(data) {
   updatePageTitle(`${data.name} — KIROSHI OPTICS`)
   updateJsonLd('tv', data)
 
+  const poster = data.poster_path ? `${IMG_BASE}/w500${data.poster_path}` : null
+  const year = (data.first_air_date || '').slice(0, 4)
+  const rating = data.vote_average ? `★ ${data.vote_average.toFixed(1)}` : ''
+  const genres = (data.genres || []).map(g => g.name).join(' · ')
   const seasons = (data.seasons || []).filter(s => s.season_number > 0)
+  const totalEpisodes = data.number_of_episodes || seasons.reduce((sum, s) => sum + s.episode_count, 0)
   const trailer = findTrailer(state._videosData)
   const cast = state._castData
   const similar = state._similarData
 
   dom.detailContent.innerHTML = `
-    <div class="seasons-grid" id="seasonsGrid"></div>
+    <div class="movie-detail">
+      <div class="movie-poster">
+        ${poster ? `<img src="${poster}" alt="${escHtml(data.name)}" />` : '<div class="no-poster" style="height:360px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--glass-bg)">🎬</div>'}
+      </div>
+      <div class="movie-info">
+        <h1 class="movie-title">${escHtml(data.name)}</h1>
+        <div class="movie-meta-row">
+          ${year ? `<span class="meta-chip">${year}</span>` : ''}
+          ${totalEpisodes ? `<span class="meta-chip">${totalEpisodes} episodes</span>` : ''}
+          ${rating ? `<span class="meta-chip">${rating}</span>` : ''}
+          ${genres ? `<span class="meta-chip">${escHtml(genres)}</span>` : ''}
+        </div>
+        ${data.overview ? `<p class="movie-overview">${escHtml(data.overview)}</p>` : ''}
+        <div class="flex gap-2">
+          <button class="btn-action watch-btn" id="watchSeriesBtn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M5 3l8 5-8 5V3z" fill="white"/>
+            </svg>
+            Browse seasons
+          </button>
+          <button class="btn-action fav-add-btn" id="favSeriesBtn">
+            ${isFavorite(data.id) ? '♥ Favorited' : '♥ Add to Watchlist'}
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="seasons-section">
+      <h3 class="section-subtitle">Seasons</h3>
+      <div class="seasons-grid-scroll" id="seasonsGrid"></div>
+    </div>
     ${trailer ? `
       <div class="trailer-section">
         <h3 class="section-subtitle">Trailer</h3>
-        <div class="trailer-embed">
-          <iframe src="https://www.youtube.com/embed/${trailer.key}" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen loading="lazy"></iframe>
+        <div class="trailer-embed" data-youtube-id="${trailer.key}" role="button" aria-label="Play trailer" tabindex="0">
+          <div class="trailer-placeholder">
+            <svg viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="32" fill="rgba(207,102,121,0.2)" stroke="var(--accent)" stroke-width="2"/>
+              <path d="M26 20l20 12-20 12V20z" fill="white"/>
+            </svg>
+            <span>Click to play trailer</span>
+          </div>
         </div>
       </div>
     ` : ''}
@@ -699,6 +737,21 @@ function showSeriesDetail(data) {
     ` : ''}
   `
 
+  document.getElementById('watchSeriesBtn').addEventListener('click', () => {
+    if (seasons.length > 0) {
+      onOpenSeason(seasons[0].season_number, data.name)
+    }
+  })
+
+  document.getElementById('favSeriesBtn').addEventListener('click', (e) => {
+    const isNowFav = toggleFavorite({ id: data.id, title: data.name, poster_path: data.poster_path, media_type: 'tv' })
+    e.target.textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
+    showToast(
+      isNowFav ? `Added "${data.name}" to watchlist` : `Removed "${data.name}" from watchlist`,
+      isNowFav ? 'success' : 'info'
+    )
+  })
+
   const grid = document.getElementById('seasonsGrid')
   seasons.forEach(s => {
     const poster = s.poster_path ? `${IMG_BASE}/w342${s.poster_path}` : null
@@ -716,6 +769,9 @@ function showSeriesDetail(data) {
   if (similar.length > 0) {
     appendSimilarRow(similar, 'More Like This')
   }
+
+  // Click-to-load trailer
+  setupTrailerClick()
 }
 
 function showMovieDetail(data) {
@@ -766,10 +822,14 @@ function showMovieDetail(data) {
     ${trailer ? `
       <div class="trailer-section">
         <h3 class="section-subtitle">Trailer</h3>
-        <div class="trailer-embed">
-          <iframe src="https://www.youtube.com/embed/${trailer.key}" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen loading="lazy"></iframe>
+        <div class="trailer-embed" data-youtube-id="${trailer.key}" role="button" aria-label="Play trailer" tabindex="0">
+          <div class="trailer-placeholder">
+            <svg viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="32" fill="rgba(207,102,121,0.2)" stroke="var(--accent)" stroke-width="2"/>
+              <path d="M26 20l20 12-20 12V20z" fill="white"/>
+            </svg>
+            <span>Click to play trailer</span>
+          </div>
         </div>
       </div>
     ` : ''}
@@ -806,6 +866,9 @@ function showMovieDetail(data) {
   if (similar.length > 0) {
     appendSimilarRow(similar, 'More Like This')
   }
+
+  // Click-to-load trailer
+  setupTrailerClick()
 }
 
 function showDetailError(e) {
@@ -842,6 +905,27 @@ function appendSimilarRow(items, title) {
 
   section.appendChild(row)
   dom.detailContent.appendChild(section)
+}
+
+function setupTrailerClick() {
+  const embed = dom.detailContent.querySelector('.trailer-embed[data-youtube-id]')
+  if (!embed) return
+
+  const loadTrailer = () => {
+    const id = embed.dataset.youtubeId
+    if (embed.querySelector('iframe')) return // Already loaded
+    embed.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>`
+  }
+
+  embed.addEventListener('click', loadTrailer)
+  embed.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      loadTrailer()
+    }
+  })
 }
 
 // ═══════════════════════════════════════
