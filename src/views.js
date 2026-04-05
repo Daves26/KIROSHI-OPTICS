@@ -472,7 +472,13 @@ export function setupSearch() {
 
 async function doSearch(query, page = 1, append = false) {
   if (!append) {
+    // Save focus to restore after view transition
+    const focusedEl = document.activeElement
     onShowView('home')
+    // Restore focus to search input if it had focus before
+    if (focusedEl === dom.searchInput) {
+      requestAnimationFrame(() => dom.searchInput.focus({ preventScroll: true }))
+    }
     dom.resultsGrid.innerHTML = ''
     for (let i = 0; i < SKELETON_COUNT_SEARCH; i++) {
       dom.resultsGrid.appendChild(buildSkeletonCard())
@@ -528,6 +534,10 @@ export function openFavs() {
 
   favs.forEach(item => {
     const card = buildResultCard(item)
+    // Hide the heart button in watchlist view (X button is enough)
+    const heartBtn = card.querySelector(`.${CLASSES.FAV_BTN}`)
+    if (heartBtn) heartBtn.style.display = 'none'
+
     // Add remove button for watchlist view
     const removeBtn = document.createElement('button')
     removeBtn.className = 'remove-btn'
@@ -866,10 +876,11 @@ function setupTrailerClick() {
 
   const loadTrailer = () => {
     const id = embed.dataset.youtubeId
+    if (!/^[a-zA-Z0-9_-]+$/.test(id)) return // Validate YouTube ID
     if (embed.querySelector('iframe')) return // Already loaded
-    embed.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1"
+    embed.innerHTML = `<iframe src="https://www.youtube.com/embed/${escHtml(id)}?autoplay=1"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen></iframe>`
+      allowfullscreen referrerpolicy="no-referrer"></iframe>`
   }
 
   embed.addEventListener('click', loadTrailer)

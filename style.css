@@ -1325,6 +1325,11 @@ body {
   gap: 12px;
 }
 
+.autoplay-wrap {
+  display: flex;
+  align-items: center;
+}
+
 .autoplay-label {
   display: flex;
   align-items: center;
@@ -1373,11 +1378,43 @@ body {
   background: var(--accent);
 }
 
-.fullscreen-btn {
-  display: flex;
+/* ── Adblock Tip ── */
+.adblock-tip {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  backdrop-filter: var(--blur-sm);
+  text-align: center;
+}
+
+.adblock-tip p {
+  color: var(--text-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.adblock-tip__link {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
+  gap: 4px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s var(--ease), opacity 0.2s var(--ease);
+}
+
+.adblock-tip__link:hover {
+  color: var(--purple);
+  opacity: 0.85;
+}
+
+.adblock-tip__icon {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════

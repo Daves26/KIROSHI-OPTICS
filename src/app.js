@@ -14,7 +14,6 @@ import {
   changeSource,
   prevEpisode,
   nextEpisode,
-  toggleFullscreen,
   checkAutoPlay,
 } from './player.js'
 import {
@@ -126,39 +125,32 @@ domRefs.serverSelect.addEventListener('change', (e) => changeSource(e.target.val
 
 // ── Build auto-play toggle ────────────
 const playerFooter = document.querySelector('.player-footer')
-const autoPlayLabel = document.createElement('label')
-autoPlayLabel.className = 'autoplay-label'
-autoPlayLabel.innerHTML = `
-  <span>Auto-play</span>
-  <input type="checkbox" id="autoPlayToggle" ${getAutoPlay() ? 'checked' : ''} />
-  <span class="toggle-slider"></span>
+const autoPlayWrap = document.createElement('div')
+autoPlayWrap.className = 'autoplay-wrap'
+autoPlayWrap.innerHTML = `
+  <label class="autoplay-label">
+    <span>Auto-play</span>
+    <input type="checkbox" id="autoPlayToggle" ${getAutoPlay() ? 'checked' : ''} />
+    <span class="toggle-slider"></span>
+  </label>
 `
-playerFooter.insertBefore(autoPlayLabel, domRefs.nextSourceBtn)
+playerFooter.insertBefore(autoPlayWrap, domRefs.nextSourceBtn)
 domRefs.autoPlayToggle = document.getElementById('autoPlayToggle')
 domRefs.autoPlayToggle.addEventListener('change', (e) => {
   setAutoPlay(e.target.checked)
   showToast(e.target.checked ? 'Auto-play enabled: next episode plays automatically' : 'Auto-play disabled', 'info')
 })
 
-// ── Build fullscreen button ───────────
-const fsBtn = document.createElement('button')
-fsBtn.className = 'btn-glass fullscreen-btn'
-fsBtn.setAttribute('aria-label', 'Toggle fullscreen')
-fsBtn.innerHTML = `
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-`
-fsBtn.addEventListener('click', () => {
-  toggleFullscreen()
-  showToast(document.fullscreenElement ? 'Fullscreen mode' : 'Exited fullscreen', 'info')
-})
-playerFooter.appendChild(fsBtn)
+// ── Helper to show/hide auto-play toggle ──
+function setAutoPlayVisible(visible) {
+  autoPlayWrap.style.display = visible ? '' : 'none'
+}
 
 // ── Initialize player ─────────────────
 initPlayer({
   ...domRefs,
   onShowView: (name) => showView(name, () => { domRefs.playerFrame.src = '' }),
+  setAutoPlayVisible,
 })
 
 // ── Navigation buttons ────────────────
@@ -263,14 +255,6 @@ document.addEventListener('keydown', (e) => {
       }
       break
 
-    case 'f':
-    case 'F':
-      if (views.player.classList.contains('active')) {
-        e.preventDefault()
-        toggleFullscreen()
-      }
-      break
-
     case 'm':
     case 'M':
       // Toggle source (quick switch)
@@ -323,11 +307,16 @@ function handleRoute() {
   if (seasonMatch) {
     const [, id, season] = seasonMatch
     openDetail(Number(id), 'tv')
-    // Store pending season to open after detail loads
+    // Store pending season to open after detail loads (max 10s timeout)
+    let attempts = 0
+    const maxAttempts = 50 // 50 * 200ms = 10s
     const interval = setInterval(() => {
+      attempts++
       if (state.currentSerieId === Number(id) && state.currentSerieType === 'tv') {
         clearInterval(interval)
         openSeason(Number(season), 'Loading...')
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval)
       }
     }, 200)
   } else if (tvMatch) {

@@ -15,6 +15,7 @@ let nextEpBtn
 let playerBackText
 let onShowView
 let autoPlayToggleEl
+let setAutoPlayVisible
 
 export function initPlayer(dom) {
   playerFrame = dom.playerFrame
@@ -24,6 +25,7 @@ export function initPlayer(dom) {
   playerBackText = dom.playerBackText
   onShowView = dom.onShowView
   autoPlayToggleEl = dom.autoPlayToggle
+  setAutoPlayVisible = dom.setAutoPlayVisible
 }
 
 // ── Play Episode ──────────────────────
@@ -58,6 +60,7 @@ export function playEpisode(idx, title = null) {
     progress: Math.round(((idx + 1) / state.currentEpisodes.length) * 100),
   })
 
+  setAutoPlayVisible(true)
   onShowView('player')
 }
 
@@ -89,6 +92,7 @@ export function playMovie(id, title) {
     progress: 0,
   })
 
+  setAutoPlayVisible(false)
   onShowView('player')
 }
 
@@ -142,17 +146,4 @@ export function nextEpisode() {
     playEpisode(state.currentEpIndex + 1)
   else if (getAutoPlay())
     checkAutoPlay()
-}
-
-// ── Fullscreen ────────────────────────
-export function toggleFullscreen() {
-  const playerWrap = document.querySelector('.player-wrap')
-  if (!playerWrap) return
-
-  if (!document.fullscreenElement) {
-    playerWrap.requestFullscreen?.()
-      .catch(() => {/* user gesture required */})
-  } else {
-    document.exitFullscreen?.()
-  }
 }
