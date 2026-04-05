@@ -394,26 +394,103 @@ body {
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
-  gap: 16px;
+  gap: 24px;
+  padding: 16px 8px 48px;
+  margin: 0 -8px;
 }
 
 /* ── Result Card ── */
 .result-card {
   position: relative;
   border-radius: var(--radius-sm);
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   backdrop-filter: var(--blur-sm);
-  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
+    box-shadow 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
+    border-color 0.4s ease,
+    background 0.4s ease;
   display: flex;
   flex-direction: column;
+  z-index: 1;
 }
+
+/* Inner glass highlight */
+.result-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 40%
+  );
+  transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Projected shadow plane below card — Apple Liquid Glass depth */
+.result-card::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 8%;
+  right: 8%;
+  height: 60px;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 0%,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.25) 35%,
+    rgba(0, 0, 0, 0.08) 65%,
+    transparent 100%
+  );
+  filter: blur(12px);
+  transform: scaleY(0.4) scaleX(0.92);
+  transform-origin: top center;
+  transition:
+    opacity 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
+    transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
+    filter 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 50%;
+}
+
 .result-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: var(--shadow-card);
-  border-color: var(--glass-border-h);
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  z-index: 10;
+  /* Multi-layer Apple Liquid Glass shadow stack */
+  box-shadow:
+    /* 1 — Large diffuse ambient: the broad, soft "atmosphere" shadow */
+    0 32px 64px -12px rgba(0, 0, 0, 0.25),
+    /* 2 — Medium spread: mid-distance depth */
+    0 16px 32px -8px rgba(0, 0, 0, 0.15),
+    /* 3 — Tight contact shadow: sharp, close to the surface */
+    0 4px 8px -2px rgba(0, 0, 0, 0.1),
+    /* 4 — Subtle rim highlight: liquid glass edge refraction */
+    0 0 0 0.5px rgba(255, 255, 255, 0.12),
+    /* 5 — Inner glass glow for depth */
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+.result-card:hover::before {
+  opacity: 1;
+}
+.result-card:hover::after {
+  opacity: 0.85;
+  transform: scaleY(1) scaleX(1);
+  filter: blur(18px);
 }
 
 .result-poster {
@@ -421,6 +498,7 @@ body {
   overflow: hidden;
   background: var(--bg-2);
   position: relative;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 .result-poster img {
   width: 100%; height: 100%;
@@ -445,6 +523,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: visible;
 }
 .result-title {
   font-size: 0.85rem;
@@ -946,7 +1025,8 @@ body {
   display: flex;
   gap: 16px;
   overflow-x: auto;
-  padding: 4px 4px 24px;
+  padding: 20px 4px 56px;
+  margin-top: -8px;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1118,7 +1198,8 @@ body {
   display: flex;
   gap: 16px;
   overflow-x: auto;
-  padding-bottom: 12px;
+  padding: 20px 4px 56px;
+  margin-top: -8px;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
