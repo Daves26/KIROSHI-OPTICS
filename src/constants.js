@@ -90,6 +90,19 @@ export const LS_WATCHING_KEY = 'kiroshi_watching'
 export const LS_AUTOPLAY_KEY = 'kiroshi_autoplay'
 
 // ═══════════════════════════════════════
+// PAGE TITLES
+// ═══════════════════════════════════════
+export const SITE_NAME = 'KIROSHI OPTICS'
+export const SITE_TAGLINE = 'See the Unseen'
+export const TITLES = {
+  home: `${SITE_NAME} — ${SITE_TAGLINE}`,
+  favs: `Watchlist — ${SITE_NAME}`,
+  detail: (name) => `${name} — ${SITE_NAME}`,
+  episodes: (name, season) => `${name} · Season ${season} — ${SITE_NAME}`,
+  player: (title) => `${title} — ${SITE_NAME}`,
+}
+
+// ═══════════════════════════════════════
 // CSS CLASS NAMES (single source of truth)
 // ═══════════════════════════════════════
 export const CLASSES = {

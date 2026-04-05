@@ -7,6 +7,7 @@ import { tmdb } from './api.js'
 import { state, getFavorites, isFavorite, toggleFavorite, removeFromFavorites, getContinueWatching, removeFromContinueWatching } from './state.js'
 import { playMovie } from './player.js'
 import { showToast } from './toast.js'
+import { setDetailTitle, updateJsonLd, setEpisodesTitle } from './router.js'
 
 // DOM references (injected by main)
 let dom = {}
@@ -37,55 +38,6 @@ export function initViews(domRefs, callbacks) {
 export function escHtml(str = '') {
   if (!str) return ''
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-// ═══════════════════════════════════════
-// SEO — Dynamic title & JSON-LD
-// ═══════════════════════════════════════
-
-export function updatePageTitle(title) {
-  const el = document.getElementById('pageTitle')
-  if (el) {
-    el.textContent = title
-  } else {
-    document.title = title
-  }
-}
-
-export function updateJsonLd(type, data) {
-  const el = document.getElementById('jsonLd')
-  if (!el || !data) return
-
-  const schema = type === 'movie' ? {
-    "@context": "https://schema.org",
-    "@type": "Movie",
-    "name": data.title,
-    "description": data.overview || '',
-    "image": data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : undefined,
-    "datePublished": data.release_date?.slice(0, 4),
-    "genre": data.genres?.map(g => g.name).join(', '),
-    "aggregateRating": data.vote_average ? {
-      "@type": "AggregateRating",
-      "ratingValue": data.vote_average.toFixed(1),
-      "bestRating": "10"
-    } : undefined,
-  } : {
-    "@context": "https://schema.org",
-    "@type": "TVSeries",
-    "name": data.name,
-    "description": data.overview || '',
-    "image": data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : undefined,
-    "datePublished": data.first_air_date?.slice(0, 4),
-    "genre": data.genres?.map(g => g.name).join(', '),
-    "numberOfSeasons": data.number_of_seasons,
-    "aggregateRating": data.vote_average ? {
-      "@type": "AggregateRating",
-      "ratingValue": data.vote_average.toFixed(1),
-      "bestRating": "10"
-    } : undefined,
-  }
-
-  el.textContent = JSON.stringify(schema)
 }
 
 export function debounce(fn, delay) {
@@ -570,6 +522,7 @@ export function openFavs() {
 
   if (favs.length === 0) {
     dom.favsGrid.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:64px 0">Your watchlist is empty.<br>Add movies and series to keep track.</p>'
+    onShowView('favs')
     return
   }
 
@@ -663,7 +616,7 @@ function showSeriesDetail(data) {
   state.currentPosterPath = data.poster_path
 
   // SEO
-  updatePageTitle(`${data.name} — KIROSHI OPTICS`)
+  setDetailTitle(data.name)
   updateJsonLd('tv', data)
 
   const poster = data.poster_path ? `${IMG_BASE}/w500${data.poster_path}` : null
@@ -780,7 +733,7 @@ function showMovieDetail(data) {
   state.currentPosterPath = data.poster_path
 
   // SEO
-  updatePageTitle(`${data.title} — KIROSHI OPTICS`)
+  setDetailTitle(data.title)
   updateJsonLd('movie', data)
 
   const poster = data.poster_path ? `${IMG_BASE}/w500${data.poster_path}` : null
@@ -936,6 +889,9 @@ export async function openSeason(seasonNum, serieName) {
   setLoading(true)
   state.currentSeason = seasonNum
   dom.episodesTitle.textContent = `${escHtml(serieName)} · Season ${seasonNum}`
+
+  // Update page title
+  setEpisodesTitle(serieName, seasonNum)
 
   try {
     const data = await tmdb(`/tv/${state.currentSerieId}/season/${seasonNum}`)

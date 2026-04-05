@@ -5,6 +5,7 @@
 import { SOURCES } from './constants.js'
 import { state, getActiveSource, setActiveSource, saveContinueWatching, getAutoPlay } from './state.js'
 import { showToast } from './toast.js'
+import { setPlayerTitle } from './router.js'
 
 // DOM references (injected by main)
 let playerFrame
@@ -42,6 +43,9 @@ export function playEpisode(idx, title = null) {
 
   if (playerBackText) playerBackText.textContent = 'Episodes'
 
+  // Update page title
+  setPlayerTitle(`${epTitle} - S${state.currentSeason}E${ep.episode_number}`)
+
   // Save to continue watching
   saveContinueWatching({
     id: `tv-${state.currentSerieId}`,
@@ -71,6 +75,9 @@ export function playMovie(id, title) {
   nextEpBtn.disabled = true
 
   if (playerBackText) playerBackText.textContent = 'Details'
+
+  // Update page title
+  setPlayerTitle(title)
 
   // Save to continue watching
   saveContinueWatching({
