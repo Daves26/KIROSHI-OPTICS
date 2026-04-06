@@ -709,6 +709,31 @@ body {
   box-shadow: 0 8px 30px rgba(0,0,0,0.35);
 }
 
+/* Current episode highlight */
+.episode-item.current-episode {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(207,102,121,0.08), rgba(124,77,255,0.05));
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 30px rgba(207,102,121,0.15);
+}
+.episode-item.current-episode .ep-num::before {
+  content: '▶ ';
+  color: var(--accent);
+}
+
+/* Episode thumbnail background (for anime without still images) */
+.ep-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+  transition: background 0.2s;
+}
+.episode-item:hover .ep-thumb-overlay {
+  background: rgba(0,0,0,0.5);
+}
+
 .ep-thumb {
   width: 160px;
   min-width: 160px;

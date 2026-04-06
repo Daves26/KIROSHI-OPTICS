@@ -4,8 +4,9 @@
 
 import { IMG_BASE, CLASSES, HOME_ROWS, ROW_OBSERVER_MARGIN, SKELETON_COUNT_HOME, SKELETON_COUNT_SEARCH, SEARCH_DEBOUNCE_MS } from './constants.js'
 import { tmdb } from './api.js'
+import { getTrendingAnime, getPopularAnime, getTopRatedAnime, getAnimeDetail, searchAnime as searchAnimeFromAnilist } from './anilist.js'
 import { state, getFavorites, isFavorite, toggleFavorite, removeFromFavorites, getContinueWatching, removeFromContinueWatching } from './state.js'
-import { playMovie } from './player.js'
+import { playMovie, playAnime } from './player.js'
 import { showToast } from './toast.js'
 import { setDetailTitle, updateJsonLd, setEpisodesTitle } from './router.js'
 
@@ -17,6 +18,9 @@ let onGoHome
 let onOpenDetail
 let onOpenSeason
 let onLoadMore
+let onOpenAnime
+let onOpenAnimeEpisode
+let onOpenAnimeEpisodes
 let playerFrame
 let continueWatchingRow = null // Track the Continue Watching row
 
@@ -28,6 +32,9 @@ export function initViews(domRefs, callbacks) {
   onOpenDetail = callbacks.onOpenDetail
   onOpenSeason = callbacks.onOpenSeason
   onLoadMore = callbacks.onLoadMore
+  onOpenAnime = callbacks.onOpenAnime
+  onOpenAnimeEpisode = callbacks.onOpenAnimeEpisode
+  onOpenAnimeEpisodes = callbacks.onOpenAnimeEpisodes
   playerFrame = domRefs.playerFrame
 }
 
@@ -110,16 +117,27 @@ function processPrefetchQueue() {
 
 export function buildResultCard(item, enablePrefetch = false) {
   const isTV = item.media_type === 'tv'
+  const isAnime = item.media_type === 'anime'
   const title = item.title || item.name || 'Untitled'
-  const year = (item.release_date || item.first_air_date || '').slice(0, 4)
-  const rating = item.vote_average ? item.vote_average.toFixed(1) : null
-  const poster = item.poster_path
-    ? `${IMG_BASE}/w342${item.poster_path}`
-    : (item.backdrop_path ? `${IMG_BASE}/w500${item.backdrop_path}` : null)
+  
+  // Handle year safely - AniList returns number, TMDB returns string
+  const rawYear = item.release_date || item.first_air_date || item.year || item.seasonYear || ''
+  const year = typeof rawYear === 'string' ? rawYear.slice(0, 4) : String(rawYear || '').slice(0, 4)
+  
+  const rating = item.vote_average ? item.vote_average.toFixed(1) : (item.rating || null)
+  
+  // Handle poster: AniList returns full URLs, TMDB returns relative paths
+  const isFullUrl = (p) => p && p.startsWith('http')
+  const poster = isFullUrl(item.poster_path)
+    ? item.poster_path
+    : (item.poster_path
+      ? `${IMG_BASE}/w342${item.poster_path}`
+      : (item.posterUrl ? item.posterUrl : (item.backdrop_path ? `${IMG_BASE}/w500${item.backdrop_path}` : null)))
 
   const card = document.createElement('div')
   card.className = CLASSES.RESULT_CARD
   card.dataset.id = item.id
+  card.dataset.mediaType = item.media_type
 
   const fav = isFavorite(item.id)
 
@@ -135,7 +153,7 @@ export function buildResultCard(item, enablePrefetch = false) {
       : `<div class="no-poster">🎬</div>`}
     </div>
     <div class="result-info">
-      <div class="type-pill">${isTV ? 'Series' : 'Movie'}</div>
+      <div class="type-pill">${isAnime ? 'Anime' : (isTV ? 'Series' : 'Movie')}</div>
       <div class="result-title">${escHtml(title)}</div>
       <div class="result-meta">
         ${year ? `<span class="result-year">${year}</span>` : ''}
@@ -154,7 +172,13 @@ export function buildResultCard(item, enablePrefetch = false) {
     )
   })
 
-  card.addEventListener('click', () => onOpenDetail(item.id, item.media_type))
+  card.addEventListener('click', () => {
+    if (isAnime) {
+      onOpenAnime(item.id)
+    } else {
+      onOpenDetail(item.id, item.media_type)
+    }
+  })
 
   // PERFORMANCE: Prefetch images on hover
   if (enablePrefetch) {
@@ -174,7 +198,7 @@ export function buildResultCard(item, enablePrefetch = false) {
 export async function loadHomeRows() {
   dom.homeRows.innerHTML = ''
 
-  // Continue Watching row (if any)
+  // Continue Watching row (if any) — always first, never shuffled
   const watching = getContinueWatching()
   if (watching.length > 0) {
     continueWatchingRow = buildContinueWatchingRow(watching)
@@ -183,13 +207,27 @@ export async function loadHomeRows() {
     continueWatchingRow = null
   }
 
-  // Shuffle rows order on each load for variety
-  const shuffled = shuffleArray([...HOME_ROWS])
+  // Build anime rows (do NOT append yet)
+  const animeRow1 = await buildAnimeHomeRow('Trending Anime', () => getTrendingAnime(1, 20))
+  const animeRow2 = await buildAnimeHomeRow('Popular Anime', () => getPopularAnime(1, 20))
+  const animeRows = [animeRow1, animeRow2]
 
-  for (const rowConfig of shuffled) {
+  // Build TMDB rows and shuffle
+  const shuffledTmdb = shuffleArray([...HOME_ROWS])
+  const tmdbRows = []
+  for (const rowConfig of shuffledTmdb) {
     const row = await buildHomeRow(rowConfig.title, rowConfig.path)
-    dom.homeRows.appendChild(row)
+    tmdbRows.push(row)
   }
+
+  // Combine: first 2 = TMDB rows, rest = mixed TMDB + anime
+  // Strategy: pick 2 TMDB rows for top, then shuffle remaining TMDB + anime for bottom
+  const topTwo = tmdbRows.slice(0, 2)
+  const remaining = shuffleArray([...tmdbRows.slice(2), ...animeRows])
+
+  // Append in order
+  topTwo.forEach(r => dom.homeRows.appendChild(r))
+  remaining.forEach(r => dom.homeRows.appendChild(r))
 }
 
 // Fisher-Yates shuffle
@@ -244,10 +282,16 @@ function buildContinueWatchingRow(items) {
 
 function buildContinueWatchingCard(item) {
   const isTV = item.media_type === 'tv'
+  const isAnime = item.media_type === 'anime'
   const title = item.title || item.name || 'Untitled'
-  const poster = item.poster_path
-    ? `${IMG_BASE}/w342${item.poster_path}`
-    : null
+
+  // Handle poster: AniList returns full URLs, TMDB returns relative paths
+  const isFullUrl = (p) => p && p.startsWith('http')
+  const rawPoster = item.poster_path
+  const poster = isFullUrl(rawPoster)
+    ? rawPoster
+    : (rawPoster ? `${IMG_BASE}/w342${rawPoster}` : null)
+
   const progress = item.progress || 0
 
   const card = document.createElement('div')
@@ -270,7 +314,7 @@ function buildContinueWatchingCard(item) {
       </div>
     </div>
     <div class="result-info">
-      <div class="type-pill">${isTV ? `S${item.season}E${item.episode}` : 'Movie'}</div>
+      <div class="type-pill">${isAnime ? `E${item.episode || 1}` : (isTV ? `S${item.season}E${item.episode}` : 'Movie')}</div>
       <div class="result-title">${escHtml(title)}</div>
     </div>
   `
@@ -287,12 +331,17 @@ function buildContinueWatchingCard(item) {
 
   // Click to resume
   card.addEventListener('click', () => {
-    if (isTV && item.season && item.episode) {
-      // Navigate to detail then season
-      onOpenDetail(item.id, 'tv')
+    if (isAnime) {
+      // For anime, set pending resume and open detail
+      const epIdx = (item.episode || 1) - 1 // Convert 1-based to 0-based
+      state.pendingAnimeResume = { episodeIndex: epIdx, title }
+      onOpenAnime(item.tmdbId || item.id)
+    } else if (isTV && item.season && item.episode) {
+      // Navigate to detail then season — always use raw tmdbId
+      onOpenDetail(item.tmdbId, 'tv')
     } else {
-      // For movies, open detail
-      onOpenDetail(item.id, 'movie')
+      // For movies — always use raw tmdbId
+      onOpenDetail(item.tmdbId, 'movie')
     }
   })
 
@@ -413,6 +462,73 @@ function setupRowPrefetching(contentEl) {
   })
 }
 
+// ═══════════════════════════════════════
+// ANIME HOME ROWS
+// ═══════════════════════════════════════
+
+async function buildAnimeHomeRow(title, fetchFn) {
+  const row = document.createElement('div')
+  row.className = CLASSES.HOME_ROW
+
+  row.innerHTML = `
+    <div class="row-header">
+      <h2 class="row-title">${escHtml(title)}</h2>
+      <div class="row-nav-btns">
+        <button class="nav-btn prev" aria-label="Previous">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="nav-btn next" aria-label="Next">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="row-content"></div>
+  `
+
+  const contentEl = row.querySelector('.row-content')
+  const prevBtn = row.querySelector('.prev')
+  const nextBtn = row.querySelector('.next')
+
+  row._loadRowData = async () => {
+    for (let i = 0; i < SKELETON_COUNT_HOME; i++) {
+      contentEl.appendChild(buildSkeletonCard())
+    }
+
+    try {
+      const items = await fetchFn()
+
+      contentEl.innerHTML = ''
+
+      if (items.length > 0) {
+        items.forEach(item => {
+          contentEl.appendChild(buildResultCard(item, true))
+        })
+        setupRowPrefetching(contentEl)
+      } else {
+        contentEl.innerHTML = '<span style="color:var(--text-3);padding:0 12px">No results</span>'
+        row.querySelector('.row-nav-btns').style.display = 'none'
+      }
+
+      setupRowNavigation(contentEl, prevBtn, nextBtn)
+    } catch (e) {
+      console.error(`Error loading anime row ${title}`, e)
+      const isRateLimit = e.message && e.message.includes('429')
+      const msg = isRateLimit
+        ? 'Rate limited. Refresh the page to try again.'
+        : 'Failed to load anime data. Check your connection and refresh.'
+      contentEl.innerHTML = `<span style="color:var(--text-3);padding:0 12px">${msg}</span>`
+      row.querySelector('.row-nav-btns').style.display = 'none'
+    }
+  }
+
+  rowObserver.observe(row)
+  return row
+}
+
 function setupRowNavigation(contentEl, prevBtn, nextBtn) {
   const scrollAmount = () => contentEl.clientWidth * 0.8
   prevBtn.addEventListener('click', () => {
@@ -491,22 +607,45 @@ async function doSearch(query, page = 1, append = false) {
   state.searchPage = page
 
   try {
-    const data = await tmdb('/search/multi', { query, page, include_adult: false })
-    state.searchTotal = data.total_results
+    // Search both TMDB and AniList in parallel
+    const [tmdbResult, animeResult] = await Promise.allSettled([
+      tmdb('/search/multi', { query, page, include_adult: false }),
+      searchAnimeFromAnilist(query, page),
+    ])
 
-    const items = data.results.filter(r => r.media_type !== 'person' && (r.poster_path || r.backdrop_path))
+    let tmdbItems = []
+    let animeItems = []
+    let totalResults = 0
+
+    // Process TMDB results
+    if (tmdbResult.status === 'fulfilled') {
+      const data = tmdbResult.value
+      tmdbItems = data.results.filter(r => r.media_type !== 'person' && (r.poster_path || r.backdrop_path))
+      totalResults += data.total_results
+    }
+
+    // Process AniList results
+    if (animeResult.status === 'fulfilled') {
+      animeItems = animeResult.value.results
+      totalResults += animeResult.value.total
+    }
 
     if (!append) {
       dom.resultsGrid.innerHTML = ''
       dom.resultsTitle.textContent = `"${escHtml(query)}"`
-      dom.resultsCount.textContent = `${data.total_results.toLocaleString()} results`
+      dom.resultsCount.textContent = `${totalResults.toLocaleString()} results`
     }
 
-    items.forEach(item => {
+    // Combine and render results (TMDB first, then anime)
+    const allItems = [...tmdbItems, ...animeItems]
+    allItems.forEach(item => {
       dom.resultsGrid.appendChild(buildResultCard(item, true))
     })
 
-    dom.loadMore.classList.toggle(CLASSES.HIDDEN, data.total_pages <= page || items.length === 0)
+    // Show load more if either source has more
+    const tmdbHasMore = tmdbResult.status === 'fulfilled' && tmdbResult.value.total_pages > page
+    const animeHasMore = animeResult.status === 'fulfilled' && animeResult.value.hasNextPage
+    dom.loadMore.classList.toggle(CLASSES.HIDDEN, !tmdbHasMore && !animeHasMore && allItems.length === 0)
 
   } catch (e) {
     console.error(e)
@@ -516,6 +655,51 @@ async function doSearch(query, page = 1, append = false) {
 
 function showSearchError() {
   dom.resultsGrid.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:32px">Failed to load results. Please try again.</p>'
+}
+
+// ═══════════════════════════════════════
+// ANIME SEARCH
+// ═══════════════════════════════════════
+
+export async function searchAnime(query, page = 1, append = false) {
+  if (!append) {
+    const focusedEl = document.activeElement
+    onShowView('home')
+    if (focusedEl === dom.searchInput) {
+      requestAnimationFrame(() => dom.searchInput.focus({ preventScroll: true }))
+    }
+    dom.resultsGrid.innerHTML = ''
+    for (let i = 0; i < SKELETON_COUNT_SEARCH; i++) {
+      dom.resultsGrid.appendChild(buildSkeletonCard())
+    }
+    dom.searchResults.classList.remove(CLASSES.HIDDEN)
+    dom.homeRows.classList.add(CLASSES.HIDDEN)
+    dom.heroText.classList.add(CLASSES.HIDDEN)
+  }
+
+  state.searchQuery = query
+  state.searchPage = page
+
+  try {
+    const result = await searchAnimeFromAnilist(query, page)
+    state.searchTotal = result.total
+
+    if (!append) {
+      dom.resultsGrid.innerHTML = ''
+      dom.resultsTitle.textContent = `"${escHtml(query)}"`
+      dom.resultsCount.textContent = `${result.total.toLocaleString()} anime results`
+    }
+
+    result.results.forEach(item => {
+      dom.resultsGrid.appendChild(buildResultCard(item, true))
+    })
+
+    dom.loadMore.classList.toggle(CLASSES.HIDDEN, !result.hasNextPage || result.results.length === 0)
+
+  } catch (e) {
+    console.error(e)
+    showSearchError()
+  }
 }
 
 // ═══════════════════════════════════════
@@ -563,9 +747,13 @@ export function openFavs() {
 
 export function goHome() {
   if (document.startViewTransition) {
-    document.startViewTransition(() => {
-      clearSearchState()
-    })
+    try {
+      document.startViewTransition(() => {
+        clearSearchState()
+      })
+    } catch {
+      // Suppress AbortError during rapid navigation
+    }
   } else {
     clearSearchState()
   }
@@ -583,6 +771,203 @@ function clearSearchState() {
 }
 
 // ═══════════════════════════════════════
+// ANIME DETAIL VIEW
+// ═══════════════════════════════════════
+
+export async function openAnime(id) {
+  setLoading(true)
+  state.currentAnimeId = id
+
+  // Clear TV/movie state to prevent cross-contamination
+  state.currentSerieId = null
+  state.currentSerieType = null
+  state.currentEpisodes = []
+  state.currentEpIndex = null
+
+  try {
+    const data = await getAnimeDetail(id)
+    showAnimeDetail(data)
+    onShowView('detail')
+
+    // Check if there's a pending anime resume (from Continue Watching)
+    if (state.pendingAnimeResume) {
+      const { episodeIndex, title } = state.pendingAnimeResume
+      state.pendingAnimeResume = null
+      // Small delay to let the DOM render
+      requestAnimationFrame(() => {
+        onOpenAnimeEpisodes(title)
+        requestAnimationFrame(() => {
+          onOpenAnimeEpisode(episodeIndex, title)
+        })
+      })
+    }
+  } catch (e) {
+    console.error(e)
+    showDetailError(e)
+  } finally {
+    setLoading(false)
+  }
+}
+
+function showAnimeDetail(data) {
+  dom.detailTitle.textContent = data.title
+  dom.detailType.textContent = 'Anime'
+  dom.detailType.classList.remove(CLASSES.HIDDEN)
+  state.currentPosterPath = data.posterUrl
+
+  setDetailTitle(data.title)
+
+  const poster = data.posterUrl || null
+  const year = data.year || ''
+  const rating = data.rating ? `★ ${data.rating}` : ''
+  const genres = (data.genres || []).join(' · ')
+  const episodes = data.episodes || 0
+  const format = data.format || 'TV'
+  const studios = (data.studios || []).join(', ')
+
+  // Store anime data for episodes view
+  state._currentAnimeData = data
+
+  dom.detailContent.innerHTML = `
+    <div class="movie-detail">
+      <div class="movie-poster">
+        ${poster ? `<img src="${poster}" alt="${escHtml(data.title)}" />` : '<div class="no-poster" style="height:360px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--glass-bg)">🎬</div>'}
+      </div>
+      <div class="movie-info">
+        <h1 class="movie-title">${escHtml(data.title)}</h1>
+        <div class="movie-meta-row">
+          ${year ? `<span class="meta-chip">${year}</span>` : ''}
+          ${format ? `<span class="meta-chip">${format}</span>` : ''}
+          ${episodes ? `<span class="meta-chip">${episodes} episodes</span>` : ''}
+          ${rating ? `<span class="meta-chip">${rating}</span>` : ''}
+          ${genres ? `<span class="meta-chip">${escHtml(genres)}</span>` : ''}
+          ${studios ? `<span class="meta-chip">${escHtml(studios)}</span>` : ''}
+        </div>
+        ${data.overview ? `<p class="movie-overview">${escHtml(data.overview)}</p>` : ''}
+        <div class="flex gap-2">
+          ${episodes > 0 ? `
+          <button class="btn-action watch-btn" id="watchAnimeBtn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M5 3l8 5-8 5V3z" fill="white"/>
+            </svg>
+            Browse episodes
+          </button>
+          ` : ''}
+          <button class="btn-action fav-add-btn" id="favAnimeBtn">
+            ${isFavorite(data.id) ? '♥ Favorited' : '♥ Add to Watchlist'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `
+
+  // Browse episodes button
+  const watchBtn = document.getElementById('watchAnimeBtn')
+  if (watchBtn) {
+    watchBtn.addEventListener('click', () => {
+      onOpenAnimeEpisodes(data.title)
+    })
+  }
+
+  // Favorite button
+  document.getElementById('favAnimeBtn').addEventListener('click', (e) => {
+    const isNowFav = toggleFavorite({
+      id: data.id,
+      title: data.title,
+      poster_path: data.posterUrl,
+      posterUrl: data.posterUrl,
+      media_type: 'anime'
+    })
+    e.target.textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
+    showToast(
+      isNowFav ? `Added "${data.title}" to watchlist` : `Removed "${data.title}" from watchlist`,
+      isNowFav ? 'success' : 'info'
+    )
+  })
+}
+
+// ═══════════════════════════════════════
+// ANIME EPISODES VIEW
+// ═══════════════════════════════════════
+
+export async function openAnimeEpisodes(title) {
+  const data = state._currentAnimeData
+  if (!data) return
+
+  // Clear TV episodes to prevent cross-contamination
+  state.currentEpisodes = []
+  state.currentEpIndex = null
+
+  dom.episodesTitle.textContent = `${escHtml(title)} · All Episodes`
+  setEpisodesTitle(title, 1)
+
+  const totalEpisodes = data.episodes || 0
+  const airingSchedule = data.airingSchedule || []
+  const now = Math.floor(Date.now() / 1000) // Current time in Unix seconds
+
+  // Build episode list, only include episodes that have aired
+  const episodeList = []
+  for (let i = 1; i <= totalEpisodes; i++) {
+    // Check if this episode has aired: find its airingAt time
+    const schedule = airingSchedule.find(s => s.episode === i)
+    if (schedule) {
+      // Has airing info - only include if already aired
+      if (schedule.airingAt <= now) {
+        episodeList.push({ number: i, name: `Episode ${i}` })
+      }
+    } else {
+      // No airing info - assume already aired (finished anime)
+      episodeList.push({ number: i, name: `Episode ${i}` })
+    }
+  }
+  state.currentAnimeEpisodes = episodeList
+
+  dom.episodesContent.innerHTML = ''
+  if (episodeList.length === 0) {
+    dom.episodesContent.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:48px 0">No episodes available yet. Check back later!</p>'
+  } else {
+    episodeList.forEach((ep, idx) => {
+      dom.episodesContent.appendChild(buildAnimeEpisodeItem(ep, idx, data))
+    })
+  }
+
+  onShowView('episodes')
+}
+
+function buildAnimeEpisodeItem(ep, idx, data) {
+  const item = document.createElement('div')
+  const isCurrentEp = state.currentAnimeEpIndex === idx
+  item.className = `${CLASSES.EPISODE_ITEM}${isCurrentEp ? ' current-episode' : ''}`
+
+  // Use anime poster or banner as thumbnail background
+  const bgImage = data.posterUrl || data.banner_path || null
+
+  item.innerHTML = `
+    <div class="ep-thumb" style="${bgImage ? `background-image:url('${bgImage}');background-size:cover;background-position:center;` : ''}">
+      <div class="ep-thumb-overlay">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="16" fill="rgba(0,0,0,0.4)"/>
+          <path d="M12 10l12 6-12 6V10z" fill="white"/>
+        </svg>
+      </div>
+      <div class="ep-play-overlay">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="16" fill="rgba(255,255,255,0.15)"/>
+          <path d="M12 10l12 6-12 6V10z" fill="white"/>
+        </svg>
+      </div>
+    </div>
+    <div class="ep-body">
+      <div class="ep-num">Episode ${ep.number}${data.format ? ` · ${data.format}` : ''}</div>
+      <div class="ep-name">${escHtml(ep.name)}</div>
+      <p class="ep-desc">Click to start watching</p>
+    </div>
+  `
+  item.addEventListener('click', () => onOpenAnimeEpisode(idx, data.title))
+  return item
+}
+
+// ═══════════════════════════════════════
 // DETAIL VIEW (Series / Movies)
 // ═══════════════════════════════════════
 
@@ -591,18 +976,22 @@ export async function openDetail(id, type) {
   state.currentSerieId = id
   state.currentSerieType = type
 
+  // Clear anime state to prevent cross-contamination
+  state.currentAnimeId = null
+  state.currentAnimeEpisodes = []
+  state.currentAnimeEpIndex = null
+  state._currentAnimeData = null
+
   try {
-    // Fetch main data + cast + videos + similar in parallel
-    const [mainData, castData, videosData, similarData] = await Promise.all([
+    // Fetch main data + cast + similar in parallel
+    const [mainData, castData, similarData] = await Promise.all([
       tmdb(`/${type}/${id}`),
       tmdb(`/${type}/${id}/credits`),
-      tmdb(`/${type}/${id}/videos`),
       tmdb(`/${type}/${id}/similar`),
     ])
 
     // Store for later use
     state._castData = castData.cast?.slice(0, 12) || []
-    state._videosData = videosData.results || []
     state._similarData = similarData.results || []
 
     if (type === 'tv') {
@@ -635,7 +1024,6 @@ function showSeriesDetail(data) {
   const genres = (data.genres || []).map(g => g.name).join(' · ')
   const seasons = (data.seasons || []).filter(s => s.season_number > 0)
   const totalEpisodes = data.number_of_episodes || seasons.reduce((sum, s) => sum + s.episode_count, 0)
-  const trailer = findTrailer(state._videosData)
   const cast = state._castData
   const similar = state._similarData
 
@@ -670,20 +1058,6 @@ function showSeriesDetail(data) {
       <h3 class="section-subtitle">Seasons</h3>
       <div class="seasons-grid-scroll" id="seasonsGrid"></div>
     </div>
-    ${trailer ? `
-      <div class="trailer-section">
-        <h3 class="section-subtitle">Trailer</h3>
-        <div class="trailer-embed" data-youtube-id="${trailer.key}" role="button" aria-label="Play trailer" tabindex="0">
-          <div class="trailer-placeholder">
-            <svg viewBox="0 0 64 64" fill="none">
-              <circle cx="32" cy="32" r="32" fill="rgba(207,102,121,0.2)" stroke="var(--accent)" stroke-width="2"/>
-              <path d="M26 20l20 12-20 12V20z" fill="white"/>
-            </svg>
-            <span>Click to play trailer</span>
-          </div>
-        </div>
-      </div>
-    ` : ''}
     ${cast.length > 0 ? `
       <div class="cast-section">
         <h3 class="section-subtitle">Cast</h3>
@@ -732,9 +1106,6 @@ function showSeriesDetail(data) {
   if (similar.length > 0) {
     appendSimilarRow(similar, 'More Like This')
   }
-
-  // Click-to-load trailer
-  setupTrailerClick()
 }
 
 function showMovieDetail(data) {
@@ -751,7 +1122,6 @@ function showMovieDetail(data) {
   const runtime = data.runtime ? `${data.runtime} min` : ''
   const rating = data.vote_average ? `★ ${data.vote_average.toFixed(1)}` : ''
   const genres = (data.genres || []).map(g => g.name).join(' · ')
-  const trailer = findTrailer(state._videosData)
   const cast = state._castData
   const similar = state._similarData
 
@@ -782,20 +1152,6 @@ function showMovieDetail(data) {
         </div>
       </div>
     </div>
-    ${trailer ? `
-      <div class="trailer-section">
-        <h3 class="section-subtitle">Trailer</h3>
-        <div class="trailer-embed" data-youtube-id="${trailer.key}" role="button" aria-label="Play trailer" tabindex="0">
-          <div class="trailer-placeholder">
-            <svg viewBox="0 0 64 64" fill="none">
-              <circle cx="32" cy="32" r="32" fill="rgba(207,102,121,0.2)" stroke="var(--accent)" stroke-width="2"/>
-              <path d="M26 20l20 12-20 12V20z" fill="white"/>
-            </svg>
-            <span>Click to play trailer</span>
-          </div>
-        </div>
-      </div>
-    ` : ''}
     ${cast.length > 0 ? `
       <div class="cast-section">
         <h3 class="section-subtitle">Cast</h3>
@@ -829,9 +1185,6 @@ function showMovieDetail(data) {
   if (similar.length > 0) {
     appendSimilarRow(similar, 'More Like This')
   }
-
-  // Click-to-load trailer
-  setupTrailerClick()
 }
 
 function showDetailError(e) {
@@ -839,17 +1192,8 @@ function showDetailError(e) {
 }
 
 // ═══════════════════════════════════════
-// HELPERS — Trailer, Similar
+// HELPERS — Similar
 // ═══════════════════════════════════════
-
-function findTrailer(videos) {
-  // Prefer YouTube trailers/teasers in order
-  const yt = videos.filter(v => v.site === 'YouTube')
-  return yt.find(v => v.type === 'Trailer')
-    || yt.find(v => v.type === 'Teaser')
-    || yt[0]
-    || null
-}
 
 function appendSimilarRow(items, title) {
   const section = document.createElement('div')
@@ -870,28 +1214,6 @@ function appendSimilarRow(items, title) {
   dom.detailContent.appendChild(section)
 }
 
-function setupTrailerClick() {
-  const embed = dom.detailContent.querySelector('.trailer-embed[data-youtube-id]')
-  if (!embed) return
-
-  const loadTrailer = () => {
-    const id = embed.dataset.youtubeId
-    if (!/^[a-zA-Z0-9_-]+$/.test(id)) return // Validate YouTube ID
-    if (embed.querySelector('iframe')) return // Already loaded
-    embed.innerHTML = `<iframe src="https://www.youtube.com/embed/${escHtml(id)}?autoplay=1"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen referrerpolicy="no-referrer"></iframe>`
-  }
-
-  embed.addEventListener('click', loadTrailer)
-  embed.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      loadTrailer()
-    }
-  })
-}
-
 // ═══════════════════════════════════════
 // EPISODES VIEW
 // ═══════════════════════════════════════
@@ -900,6 +1222,11 @@ export async function openSeason(seasonNum, serieName) {
   setLoading(true)
   state.currentSeason = seasonNum
   dom.episodesTitle.textContent = `${escHtml(serieName)} · Season ${seasonNum}`
+
+  // Clear anime state to prevent cross-contamination
+  state.currentAnimeId = null
+  state.currentAnimeEpisodes = []
+  state.currentAnimeEpIndex = null
 
   // Update page title
   setEpisodesTitle(serieName, seasonNum)

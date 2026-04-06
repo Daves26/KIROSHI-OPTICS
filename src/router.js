@@ -32,9 +32,13 @@ export function showView(name, onPlayerExit) {
 
   // Use View Transitions API if available
   if (document.startViewTransition) {
-    document.startViewTransition(() => {
-      updateViewClasses(name)
-    })
+    try {
+      document.startViewTransition(() => {
+        updateViewClasses(name)
+      })
+    } catch {
+      // AbortError during rapid view changes — fallback applied silently
+    }
   } else {
     updateViewClasses(name)
   }

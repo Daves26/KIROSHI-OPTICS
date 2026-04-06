@@ -2,7 +2,7 @@
 // STATE MANAGEMENT — App state + localStorage
 // ═══════════════════════════════════════
 
-import { LS_SOURCE_KEY, LS_FAVS_KEY, LS_WATCHING_KEY, LS_AUTOPLAY_KEY, DEFAULT_SOURCE } from './constants.js'
+import { LS_FAVS_KEY, LS_WATCHING_KEY, LS_AUTOPLAY_KEY, DEFAULT_SOURCE } from './constants.js'
 
 // ── App State ─────────────────────────
 export const state = {
@@ -15,15 +15,21 @@ export const state = {
   searchQuery: '',
   searchTotal: 0,
   currentPosterPath: null, // Store poster for continue watching
+  // Anime specific
+  currentAnimeId: null,
+  currentAnimeEpisodes: [],
+  currentAnimeEpIndex: null,
+  // Pending resume (for Continue Watching)
+  pendingAnimeResume: null, // { episodeIndex, title }
 }
 
 // ── Source Management ─────────────────
 export function getActiveSource() {
-  return localStorage.getItem(LS_SOURCE_KEY) || DEFAULT_SOURCE
+  return DEFAULT_SOURCE
 }
 
 export function setActiveSource(key) {
-  localStorage.setItem(LS_SOURCE_KEY, key)
+  // No persistence - always resets to default on reload
 }
 
 // ── Favorites Management ──────────────

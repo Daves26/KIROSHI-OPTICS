@@ -10,7 +10,7 @@ import {
   initPlayer,
   playEpisode,
   playMovie,
-  tryNextSource,
+  playAnime,
   changeSource,
   prevEpisode,
   nextEpisode,
@@ -21,15 +21,25 @@ import {
   setLoading,
   loadHomeRows,
   setupSearch,
+  searchAnime,
   openFavs,
   goHome,
   openDetail,
+  openAnime,
+  openAnimeEpisodes,
   openSeason,
   updateAllFavIcons,
   setupParallax,
   refreshContinueWatchingRow,
 } from './views.js'
 import { showToast } from './toast.js'
+
+// Suppress View Transitions AbortError (harmless, occurs during rapid navigation)
+window.addEventListener('unhandledrejection', (e) => {
+  if (e.reason?.name === 'AbortError' && e.reason?.message?.includes('Transition was skipped')) {
+    e.preventDefault()
+  }
+})
 
 // ── Validate token on startup ─────────
 if (!validateToken()) {
@@ -77,7 +87,7 @@ const domRefs = {
   prevEpBtn: document.getElementById('prevEp'),
   nextEpBtn: document.getElementById('nextEp'),
   serverSelect: document.getElementById('serverSelect'),
-  nextSourceBtn: document.getElementById('nextSourceBtn'),
+  nextSourceBtn: null, // Removed
   playerBackText: document.getElementById('playerBackText'),
   autoPlayToggle: null, // injected below
 }
@@ -107,20 +117,33 @@ initViews(domRefs, {
   onGoHome: goHome,
   onOpenDetail: openDetail,
   onOpenSeason: openSeason,
+  onOpenAnime: openAnime,
+  onOpenAnimeEpisode: (idx, title) => playAnime(idx, title),
+  onOpenAnimeEpisodes: (title) => openAnimeEpisodes(title),
   onLoadMore: (idx, title) => playEpisode(idx, title),
 })
 
 // ── Setup source selector ─────────────
-const activeSourceKey = getActiveSource()
-Object.entries(SOURCES).forEach(([key, src]) => {
-  const opt = document.createElement('option')
-  opt.value = key
-  opt.textContent = src.name
-  if (key === activeSourceKey) opt.selected = true
-  domRefs.serverSelect.appendChild(opt)
-})
+function populateSourceDropdown(showAnimeOnly = false) {
+  domRefs.serverSelect.innerHTML = ''
+  const activeSourceKey = getActiveSource()
+  Object.entries(SOURCES).forEach(([key, src]) => {
+    // Filter: if showAnimeOnly, only show sources with getAnime
+    if (showAnimeOnly && !src.getAnime) return
+    const opt = document.createElement('option')
+    opt.value = key
+    opt.textContent = src.name
+    if (key === activeSourceKey) opt.selected = true
+    domRefs.serverSelect.appendChild(opt)
+  })
+}
 
-domRefs.nextSourceBtn.addEventListener('click', tryNextSource)
+// Initial population (show all sources)
+populateSourceDropdown(false)
+
+// Export for use when content type changes
+window._populateSourceDropdown = populateSourceDropdown
+
 domRefs.serverSelect.addEventListener('change', (e) => changeSource(e.target.value))
 
 // ── Build auto-play toggle ────────────
@@ -134,7 +157,7 @@ autoPlayWrap.innerHTML = `
     <span class="toggle-slider"></span>
   </label>
 `
-playerFooter.insertBefore(autoPlayWrap, domRefs.nextSourceBtn)
+playerFooter.appendChild(autoPlayWrap)
 domRefs.autoPlayToggle = document.getElementById('autoPlayToggle')
 domRefs.autoPlayToggle.addEventListener('change', (e) => {
   setAutoPlay(e.target.checked)
@@ -160,7 +183,10 @@ document.getElementById('backToHomeFavs').addEventListener('click', () => { goHo
 document.getElementById('backToHome').addEventListener('click', () => showView('home'))
 document.getElementById('backToSeasons').addEventListener('click', () => showView('detail'))
 document.getElementById('backToEpisodes').addEventListener('click', () => {
-  if (state.currentSerieType === 'movie') {
+  // Anime: go back to detail (episodes are in detail view)
+  if (state.currentAnimeId) {
+    showView('detail')
+  } else if (state.currentSerieType === 'movie') {
     showView('detail')
   } else {
     showView('episodes')
@@ -255,15 +281,6 @@ document.addEventListener('keydown', (e) => {
       }
       break
 
-    case 'm':
-    case 'M':
-      // Toggle source (quick switch)
-      if (views.player.classList.contains('active')) {
-        e.preventDefault()
-        tryNextSource()
-      }
-      break
-
     case ' ':
       // Space doesn't control embed (cross-origin), but we could toggle auto-play
       if (views.player.classList.contains('active')) {
@@ -299,12 +316,15 @@ function handleRoute() {
   const hash = window.location.hash.slice(1)
   if (!hash) return
 
-  // Patterns: #/movie/123, #/tv/456, #/tv/456/season/2
+  // Patterns: #/movie/123, #/tv/456, #/tv/456/season/2, #/anime/789
   const movieMatch = hash.match(/^\/movie\/(\d+)/)
   const tvMatch = hash.match(/^\/tv\/(\d+)/)
   const seasonMatch = hash.match(/^\/tv\/(\d+)\/season\/(\d+)/)
+  const animeMatch = hash.match(/^\/anime\/(\d+)/)
 
-  if (seasonMatch) {
+  if (animeMatch) {
+    openAnime(Number(animeMatch[1]))
+  } else if (seasonMatch) {
     const [, id, season] = seasonMatch
     openDetail(Number(id), 'tv')
     // Store pending season to open after detail loads (max 10s timeout)

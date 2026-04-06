@@ -22,8 +22,14 @@ export const SKELETON_COUNT_SEARCH = 6
 // VIDEO SOURCES
 // ═══════════════════════════════════════
 export const SOURCES = {
+  videasy: {
+    name: 'VidEasy',
+    getMovie: (id) => `https://player.videasy.net/movie/${id}`,
+    getTv: (id, s, e) => `https://player.videasy.net/tv/${id}/${s}/${e}`,
+    getAnime: (id, episode = 1) => `https://player.videasy.net/anime/${id}/${episode}`
+  },
   moviesapi: {
-    name: 'MoviesAPI (Default)',
+    name: 'MoviesAPI',
     getMovie: (id) => `https://moviesapi.to/movie/${id}`,
     getTv: (id, s, e) => `https://moviesapi.to/tv/${id}-${s}-${e}`
   },
@@ -42,25 +48,11 @@ export const SOURCES = {
     getMovie: (id) => `https://111movies.com/movie/${id}`,
     getTv: (id, s, e) => `https://111movies.com/tv/${id}-${s}-${e}`
   },
-  vidzee: {
-    name: 'VidZee',
-    getMovie: (id) => `https://vidzee.net/movie/${id}`,
-    getTv: (id, s, e) => `https://vidzee.net/tv/${id}-${s}-${e}`
-  },
-  videasy: {
-    name: 'VidEasy',
-    getMovie: (id) => `https://videasy.net/movie/${id}`,
-    getTv: (id, s, e) => `https://videasy.net/tv/${id}-${s}-${e}`
-  },
   vidnest: {
     name: 'VidNest',
-    getMovie: (id) => `https://vidnest.net/movie/${id}`,
-    getTv: (id, s, e) => `https://vidnest.net/tv/${id}-${s}-${e}`
-  },
-  rivestream: {
-    name: 'RiveStream',
-    getMovie: (id) => `https://rivestream.live/watch?type=movie&id=${id}`,
-    getTv: (id, s, e) => `https://rivestream.live/watch?type=tv&id=${id}&season=${s}&episode=${e}`
+    getMovie: (id) => `https://vidnest.fun/movie/${id}`,
+    getTv: (id, s, e) => `https://vidnest.fun/tv/${id}/${s}/${e}`,
+    getAnime: (id, episode = 1) => `https://vidnest.fun/anime/${id}/${episode}/sub`
   },
   vidlink: {
     name: 'VidLink',
@@ -76,10 +68,15 @@ export const SOURCES = {
     name: 'VidSrc.icu',
     getMovie: (id) => `https://vidsrc.icu/embed/movie/${id}`,
     getTv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}`
+  },
+  rivestream: {
+    name: 'RiveStream',
+    getMovie: (id) => `https://rivestream.org/embed?type=movie&id=${id}`,
+    getTv: (id, s, e) => `https://rivestream.org/embed?type=tv&id=${id}&season=${s}&episode=${e}`
   }
 }
 
-export const DEFAULT_SOURCE = 'moviesapi'
+export const DEFAULT_SOURCE = 'videasy'
 
 // ═══════════════════════════════════════
 // LOCAL STORAGE KEYS
