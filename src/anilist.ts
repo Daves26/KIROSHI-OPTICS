@@ -2,10 +2,21 @@
 // ANILIST API — GraphQL queries for anime
 // ═══════════════════════════════════════
 
-const ANILIST_API = 'https://graphql.anilist.co'
+import type {
+  AniListMedia,
+  AniListSearchResponse,
+  AniListPageInfo,
+  AniListAiringSchedule,
+  AniListRelation,
+  AniListRecommendation,
+  NormalizedAnime,
+  AniListDetailResponse,
+} from './types.js'
+
+const ANILIST_API: string = 'https://graphql.anilist.co'
 
 // GraphQL queries
-const SEARCH_QUERY = `
+const SEARCH_QUERY: string = `
 query ($search: String, $page: Int, $perPage: Int, $sort: [MediaSort]) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
@@ -39,7 +50,7 @@ query ($search: String, $page: Int, $perPage: Int, $sort: [MediaSort]) {
   }
 }`
 
-const TRENDING_QUERY = `
+const TRENDING_QUERY: string = `
 query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
@@ -69,7 +80,7 @@ query ($page: Int, $perPage: Int) {
   }
 }`
 
-const POPULAR_QUERY = `
+const POPULAR_QUERY: string = `
 query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
@@ -99,7 +110,7 @@ query ($page: Int, $perPage: Int) {
   }
 }`
 
-const TOP_RATED_QUERY = `
+const TOP_RATED_QUERY: string = `
 query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
@@ -129,7 +140,7 @@ query ($page: Int, $perPage: Int) {
   }
 }`
 
-const MEDIA_DETAIL_QUERY = `
+const MEDIA_DETAIL_QUERY: string = `
 query ($id: Int) {
   Media(id: $id, type: ANIME) {
     id
@@ -197,37 +208,55 @@ query ($id: Int) {
 }`
 
 // Cache
-const CACHE_TTL = 1000 * 60 * 30 // 30 minutes
-const CACHE_KEY = 'kiroshi_anilist_cache'
+const CACHE_TTL: number = 1000 * 60 * 30 // 30 minutes
+const CACHE_KEY: string = 'kiroshi_anilist_cache'
 
-function getCached(key) {
+interface CacheItem<T = unknown> {
+  data: T
+  expires: number
+}
+
+function getCached<T = unknown>(key: string): T | null {
   try {
     const raw = localStorage.getItem(`${CACHE_KEY}_${key}`)
     if (!raw) return null
-    const { data, expires } = JSON.parse(raw)
+    const { data, expires }: CacheItem<T> = JSON.parse(raw)
     if (Date.now() > expires) {
       localStorage.removeItem(`${CACHE_KEY}_${key}`)
       return null
     }
     return data
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
-function setCache(key, data) {
+function setCache(key: string, data: unknown): void {
   try {
-    const item = { data, expires: Date.now() + CACHE_TTL }
+    const item: CacheItem = { data, expires: Date.now() + CACHE_TTL }
     localStorage.setItem(`${CACHE_KEY}_${key}`, JSON.stringify(item))
-  } catch { /* quota exceeded */ }
+  } catch {
+    // quota exceeded
+  }
 }
 
 // API call helper with retry
-const MAX_RETRIES = 2
-const RETRY_DELAY_MS = 1500
+const MAX_RETRIES: number = 2
+const RETRY_DELAY_MS: number = 1500
 
-async function anilistQuery(query, variables = {}, retries = 0) {
+interface GraphQLResponse<T = unknown> {
+  data: T
+  errors?: Array<{ message: string; locations?: Array<{ line: number; column: number }> }>
+}
+
+async function anilistQuery<T = unknown>(
+  query: string,
+  variables: Record<string, unknown> = {},
+  retries: number = 0
+): Promise<T> {
   const cacheKey = JSON.stringify({ query, variables })
 
-  const cached = getCached(cacheKey)
+  const cached = getCached<T>(cacheKey)
   if (cached) return cached
 
   try {
@@ -244,34 +273,41 @@ async function anilistQuery(query, variables = {}, retries = 0) {
       if (res.status === 429 && retries < MAX_RETRIES) {
         // Rate limited - retry with delay
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (retries + 1)))
-        return anilistQuery(query, variables, retries + 1)
+        return anilistQuery<T>(query, variables, retries + 1)
       }
       throw new Error(`AniList API error: ${res.status}`)
     }
 
-    const json = await res.json()
-    if (json.errors) throw new Error(json.errors[0]?.message || 'AniList error')
+    const json: GraphQLResponse<T> = await res.json()
+    if (json.errors) throw new Error(json.errors[0]?.message ?? 'AniList error')
 
     setCache(cacheKey, json.data)
     return json.data
-  } catch (err) {
+  } catch (err: any) {
     // Network error - retry
-    if (retries < MAX_RETRIES && (err.name === 'TypeError' || err.message.includes('fetch'))) {
+    if (retries < MAX_RETRIES && (err.name === 'TypeError' || err.message?.includes('fetch'))) {
       await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (retries + 1)))
-      return anilistQuery(query, variables, retries + 1)
+      return anilistQuery<T>(query, variables, retries + 1)
     }
     throw err
   }
 }
 
 // Public API functions
-export async function searchAnime(query, page = 1, perPage = 20) {
-  const data = await anilistQuery(SEARCH_QUERY, {
-    search: query,
-    page,
-    perPage,
-    sort: ['TRENDING_DESC'],
-  })
+export async function searchAnime(
+  query: string,
+  page: number = 1,
+  perPage: number = 20
+): Promise<AniListSearchResponse> {
+  const data = await anilistQuery<{ Page: { pageInfo: AniListPageInfo; media: AniListMedia[] } }>(
+    SEARCH_QUERY,
+    {
+      search: query,
+      page,
+      perPage,
+      sort: ['TRENDING_DESC'],
+    }
+  )
 
   const pageInfo = data.Page.pageInfo
   const items = data.Page.media.map(normalizeAnime)
@@ -285,33 +321,58 @@ export async function searchAnime(query, page = 1, perPage = 20) {
   }
 }
 
-export async function getTrendingAnime(page = 1, perPage = 20) {
-  const data = await anilistQuery(TRENDING_QUERY, { page, perPage })
+export async function getTrendingAnime(page: number = 1, perPage: number = 20): Promise<NormalizedAnime[]> {
+  const data = await anilistQuery<{ Page: { media: AniListMedia[] } }>(TRENDING_QUERY, { page, perPage })
   return data.Page.media.map(normalizeAnime)
 }
 
-export async function getPopularAnime(page = 1, perPage = 20) {
-  const data = await anilistQuery(POPULAR_QUERY, { page, perPage })
+export async function getPopularAnime(page: number = 1, perPage: number = 20): Promise<NormalizedAnime[]> {
+  const data = await anilistQuery<{ Page: { media: AniListMedia[] } }>(POPULAR_QUERY, { page, perPage })
   return data.Page.media.map(normalizeAnime)
 }
 
-export async function getTopRatedAnime(page = 1, perPage = 20) {
-  const data = await anilistQuery(TOP_RATED_QUERY, { page, perPage })
+export async function getTopRatedAnime(page: number = 1, perPage: number = 20): Promise<NormalizedAnime[]> {
+  const data = await anilistQuery<{ Page: { media: AniListMedia[] } }>(TOP_RATED_QUERY, { page, perPage })
   return data.Page.media.map(normalizeAnime)
 }
 
-export async function getAnimeDetail(id) {
-  const data = await anilistQuery(MEDIA_DETAIL_QUERY, { id })
+export async function getAnimeDetail(id: number): Promise<AniListDetailResponse> {
+  interface MediaDetailResponse {
+    Media: AniListMedia & {
+      studios?: { nodes: Array<{ name: string }> }
+      airingSchedule?: { nodes: Array<{ episode: number; airingAt: number }> }
+      relations?: { edges: Array<{
+        relationType: string
+        node: {
+          id: number
+          title: { romaji: string; english: string }
+          coverImage?: { medium: string }
+          format: string
+        }
+      }> }
+      recommendations?: { nodes: Array<{
+        mediaRecommendation?: {
+          id: number
+          title: { romaji: string; english: string }
+          coverImage?: { medium: string }
+          format: string
+        }
+      }> }
+    }
+  }
+  
+  const data = await anilistQuery<MediaDetailResponse>(MEDIA_DETAIL_QUERY, { id })
+  
   return normalizeAnimeDetail(data.Media)
 }
 
 // Normalize AniList response to our format
-function normalizeAnime(media) {
-  const title = media.title.english || media.title.romaji || 'Unknown'
-  const nativeTitle = media.title.native || ''
-  const format = media.format || 'TV'
-  const isMovie = format === 'MOVIE'
-  const episodes = media.episodes || 0
+function normalizeAnime(media: AniListMedia): NormalizedAnime {
+  const title: string = media.title.english || media.title.romaji || 'Unknown'
+  const nativeTitle: string = media.title.native || ''
+  const format: string = media.format || 'TV'
+  const isMovie: boolean = format === 'MOVIE'
+  const episodes: number = media.episodes ?? 0
 
   return {
     id: media.id,
@@ -320,63 +381,89 @@ function normalizeAnime(media) {
     media_type: 'anime',
     format,
     episodes: isMovie ? 1 : episodes,
-    season: media.seasonYear || '',
-    year: media.seasonYear || '',
+    season: String(media.seasonYear ?? ''),
+    year: String(media.seasonYear ?? ''),
     rating: media.averageScore ? (media.averageScore / 10).toFixed(1) : null,
-    score: media.averageScore,
+    score: media.averageScore ?? null,
     genres: media.genres || [],
-    poster_path: media.coverImage?.large || media.coverImage?.medium || null,
-    banner_path: media.bannerImage || null,
+    poster_path: media.coverImage?.large ?? media.coverImage?.medium ?? null,
+    banner_path: media.bannerImage ?? null,
     overview: media.description ? stripHtml(media.description) : '',
     status: media.status,
     // For VidEasy compatibility
-    posterUrl: media.coverImage?.large || media.coverImage?.medium || null,
+    posterUrl: media.coverImage?.large ?? media.coverImage?.medium ?? null,
   }
 }
 
-function normalizeAnimeDetail(media) {
-  const normalized = normalizeAnime(media)
-  
+function normalizeAnimeDetail(media: AniListMedia & {
+  studios?: { nodes: Array<{ name: string }> }
+  airingSchedule?: { nodes: Array<{ episode: number; airingAt: number }> }
+  relations?: { edges: Array<{
+    relationType: string
+    node: {
+      id: number
+      title: { romaji: string; english: string }
+      coverImage?: { medium: string }
+      format: string
+    }
+  }> }
+  recommendations?: { nodes: Array<{
+    mediaRecommendation?: {
+      id: number
+      title: { romaji: string; english: string }
+      coverImage?: { medium: string }
+      format: string
+    }
+  }> }
+}): AniListDetailResponse {
+  const normalized: NormalizedAnime = normalizeAnime(media)
+
   // Add studios
-  normalized.studios = media.studios?.nodes?.map(s => s.name) || []
-  
+  const studios: string[] = media.studios?.nodes?.map(s => s.name) ?? []
+
   // Add airing schedule (for filtering unreleased episodes)
-  normalized.airingSchedule = media.airingSchedule?.nodes?.map(node => ({
+  const airingSchedule: AniListAiringSchedule[] = media.airingSchedule?.nodes?.map(node => ({
     episode: node.episode,
     airingAt: node.airingAt, // Unix timestamp
-  })) || []
-  
+  })) ?? []
+
   // Add relations (sequels, prequels, etc.)
-  normalized.relations = media.relations?.edges?.map(edge => ({
+  const relations: AniListRelation[] = media.relations?.edges?.map(edge => ({
     relationType: edge.relationType,
     id: edge.node.id,
     title: edge.node.title.english || edge.node.title.romaji,
     poster: edge.node.coverImage?.medium,
     format: edge.node.format,
-  })) || []
-  
+  })) ?? []
+
   // Add recommendations
-  normalized.recommendations = media.recommendations?.nodes
-    ?.filter(n => n.mediaRecommendation)
+  const recommendations: AniListRecommendation[] = media.recommendations?.nodes
+    ?.filter(n => n.mediaRecommendation != null)
     ?.map(n => ({
-      id: n.mediaRecommendation.id,
-      title: n.mediaRecommendation.title.english || n.mediaRecommendation.title.romaji,
-      poster: n.mediaRecommendation.coverImage?.medium,
-      format: n.mediaRecommendation.format,
-    })) || []
-  
-  return normalized
+      id: n.mediaRecommendation!.id,
+      title: n.mediaRecommendation!.title.english || n.mediaRecommendation!.title.romaji,
+      poster: n.mediaRecommendation!.coverImage?.medium,
+      format: n.mediaRecommendation!.format,
+    })) ?? []
+
+  return {
+    ...normalized,
+    studios,
+    airingSchedule,
+    relations,
+    recommendations,
+  }
 }
 
 // Utility: strip HTML tags from AniList descriptions
-function stripHtml(html) {
+function stripHtml(html: string): string {
   const tmp = document.createElement('div')
   tmp.innerHTML = html
-  return tmp.textContent || tmp.innerText || ''
+  return tmp.textContent ?? tmp.innerText ?? ''
 }
 
 // Clear AniList cache
-export function clearAnilistCache() {
+export function clearAnilistCache(): void {
   const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY))
   keys.forEach(k => localStorage.removeItem(k))
 }

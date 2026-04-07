@@ -2,10 +2,17 @@
 // STATE MANAGEMENT — App state + localStorage
 // ═══════════════════════════════════════
 
-import { LS_FAVS_KEY, LS_WATCHING_KEY, LS_AUTOPLAY_KEY, DEFAULT_SOURCE } from './constants.js'
+import type {
+  AppState,
+  MediaItem,
+  ContinueWatchingItem,
+  ContinueWatchingMap,
+  FavoritesMap,
+} from './types.js'
+import { LS_FAVS_KEY, LS_WATCHING_KEY, DEFAULT_SOURCE } from './constants.js'
 
 // ── App State ─────────────────────────
-export const state = {
+export const state: AppState = {
   currentSerieId: null,
   currentSerieType: null,
   currentSeason: null,
@@ -21,23 +28,48 @@ export const state = {
   currentAnimeEpIndex: null,
   // Pending resume (for Continue Watching)
   pendingAnimeResume: null, // { episodeIndex, title }
+  // Source preferences (internal, not serialized)
+  _lastMovieSource: null,
+  _lastAnimeSource: null,
+  _activeSource: null,
 }
 
 // ── Source Management ─────────────────
-export function getActiveSource() {
-  return DEFAULT_SOURCE
+export function getActiveSource(): string {
+  return state._activeSource ?? DEFAULT_SOURCE
 }
 
-export function setActiveSource(key) {
-  // No persistence - always resets to default on reload
+export function setActiveSource(key: string): void {
+  state._activeSource = key
+}
+
+/**
+ * Get last used source for a specific content type
+ */
+export function getLastSourceForType(type: 'movie' | 'anime'): string | null {
+  if (type === 'movie') {
+    return state._lastMovieSource
+  }
+  return state._lastAnimeSource
+}
+
+/**
+ * Save last used source for a specific content type
+ */
+export function setLastSourceForType(type: 'movie' | 'anime', sourceKey: string): void {
+  if (type === 'movie') {
+    state._lastMovieSource = sourceKey
+  } else {
+    state._lastAnimeSource = sourceKey
+  }
 }
 
 // ── Favorites Management ──────────────
-export function getFavorites() {
-  return JSON.parse(localStorage.getItem(LS_FAVS_KEY) || '{}')
+export function getFavorites(): FavoritesMap {
+  return JSON.parse(localStorage.getItem(LS_FAVS_KEY) || '{}') as FavoritesMap
 }
 
-export function toggleFavorite(item) {
+export function toggleFavorite(item: MediaItem): boolean {
   const favs = getFavorites()
   const wasFav = !!favs[item.id]
 
@@ -55,11 +87,11 @@ export function toggleFavorite(item) {
   return !wasFav
 }
 
-export function isFavorite(id) {
+export function isFavorite(id: number): boolean {
   return !!getFavorites()[id]
 }
 
-export function removeFromFavorites(id) {
+export function removeFromFavorites(id: number): boolean {
   const favs = getFavorites()
   if (favs[id]) {
     delete favs[id]
@@ -70,22 +102,22 @@ export function removeFromFavorites(id) {
   return false
 }
 
-export function clearFavorites() {
+export function clearFavorites(): void {
   localStorage.removeItem(LS_FAVS_KEY)
   window.dispatchEvent(new Event('storage'))
 }
 
 // ── Continue Watching ─────────────────
-export function getContinueWatching() {
-  const data = JSON.parse(localStorage.getItem(LS_WATCHING_KEY) || '{}')
+export function getContinueWatching(): ContinueWatchingItem[] {
+  const data = JSON.parse(localStorage.getItem(LS_WATCHING_KEY) || '{}') as ContinueWatchingMap
   // Return sorted by last watched (most recent first), limit 20
   return Object.values(data)
     .sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0))
     .slice(0, 20)
 }
 
-export function saveContinueWatching(item) {
-  const data = JSON.parse(localStorage.getItem(LS_WATCHING_KEY) || '{}')
+export function saveContinueWatching(item: ContinueWatchingItem): void {
+  const data = JSON.parse(localStorage.getItem(LS_WATCHING_KEY) || '{}') as ContinueWatchingMap
   data[item.id] = {
     ...item,
     watchedAt: Date.now(),
@@ -94,8 +126,8 @@ export function saveContinueWatching(item) {
   window.dispatchEvent(new Event('storage'))
 }
 
-export function removeFromContinueWatching(id) {
-  const data = JSON.parse(localStorage.getItem(LS_WATCHING_KEY) || '{}')
+export function removeFromContinueWatching(id: string): boolean {
+  const data = JSON.parse(localStorage.getItem(LS_WATCHING_KEY) || '{}') as ContinueWatchingMap
   if (data[id]) {
     delete data[id]
     localStorage.setItem(LS_WATCHING_KEY, JSON.stringify(data))
@@ -105,11 +137,3 @@ export function removeFromContinueWatching(id) {
   return false
 }
 
-// ── Auto-play Setting ─────────────────
-export function getAutoPlay() {
-  return localStorage.getItem(LS_AUTOPLAY_KEY) === 'true'
-}
-
-export function setAutoPlay(value) {
-  localStorage.setItem(LS_AUTOPLAY_KEY, String(value))
-}

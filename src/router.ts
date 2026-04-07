@@ -2,21 +2,22 @@
 // ROUTER — View transitions & navigation
 // ═══════════════════════════════════════
 
+import type { ViewName, ViewRefs, TmdbDetailResponse, NormalizedAnime, MediaType } from './types.js'
 import { CLASSES, TITLES } from './constants.js'
 
 // View references (injected by main)
-let views = {}
+let views: ViewRefs = {} as ViewRefs
 
 // Track last dynamic title for restoration when navigating back from player
-let lastDetailTitle = null
-let lastEpisodesTitle = null
+let lastDetailTitle: string | null = null
+let lastEpisodesTitle: string | null = null
 
-export function initRouter(viewRefs) {
+export function initRouter(viewRefs: ViewRefs): void {
   views = viewRefs
 }
 
 // Focus targets for each view
-const FOCUS_TARGETS = {
+const FOCUS_TARGETS: Record<ViewName, string> = {
   home: '#logoBtn',
   detail: '#backToHome',
   episodes: '#backToSeasons',
@@ -24,8 +25,8 @@ const FOCUS_TARGETS = {
   favs: '#backToHomeFavs',
 }
 
-export function showView(name, onPlayerExit) {
-  // Si salimos del player, vaciamos el src para cortar audio/video
+export function showView(name: ViewName, onPlayerExit?: () => void): void {
+  // If leaving player, clear src to stop audio/video
   if (name !== 'player' && onPlayerExit) {
     onPlayerExit()
   }
@@ -48,7 +49,7 @@ export function showView(name, onPlayerExit) {
   // Update page title for views with static titles (home, favs)
   // Dynamic titles (detail, episodes, player) are set by their own functions
   if (TITLES[name] && typeof TITLES[name] === 'string') {
-    updatePageTitle(TITLES[name])
+    updatePageTitle(TITLES[name] as string)
     // Clear dynamic title cache when going home or to favs
     if (name === 'home' || name === 'favs') {
       lastDetailTitle = null
@@ -69,26 +70,27 @@ export function showView(name, onPlayerExit) {
 
   // ACCESSIBILITY: Focus management after view change
   requestAnimationFrame(() => {
-    const focusTarget = document.querySelector(FOCUS_TARGETS[name])
-    if (focusTarget && focusTabable(focusTarget)) {
+    const focusTarget = document.querySelector<HTMLElement>(FOCUS_TARGETS[name])
+    if (focusTarget && isFocusable(focusTarget)) {
       focusTarget.focus({ preventScroll: true })
     }
   })
 }
 
-function focusTabable(el) {
-  return el && !el.disabled && el.offsetParent !== null
+function isFocusable(el: HTMLElement): boolean {
+  const isButton = el instanceof HTMLButtonElement
+  const isDisabled = isButton && (el as HTMLButtonElement).disabled
+  return el && !isDisabled && el.offsetParent !== null
 }
 
-function updateViewClasses(name) {
+function updateViewClasses(name: ViewName): void {
   Object.values(views).forEach(v => v.classList.remove(CLASSES.VIEW_ACTIVE))
-  views[name].classList.add(CLASSES.VIEW_ACTIVE)
+  views[name]?.classList.add(CLASSES.VIEW_ACTIVE)
 }
 
-export function updatePageTitle(titleOrView) {
-  // Check if it's a view name (home, favs, etc.) or a custom title
-  const title = TITLES[titleOrView] || titleOrView
-  
+export function updatePageTitle(titleOrView: string): void {
+  const title = (TITLES as any)[titleOrView] ?? titleOrView
+
   const el = document.getElementById('pageTitle')
   if (el) {
     el.textContent = title
@@ -97,22 +99,22 @@ export function updatePageTitle(titleOrView) {
   }
 }
 
-export function setDetailTitle(name) {
+export function setDetailTitle(name: string): void {
   lastDetailTitle = TITLES.detail(name)
   updatePageTitle(lastDetailTitle)
 }
 
-export function setEpisodesTitle(name, season) {
+export function setEpisodesTitle(name: string, season: number): void {
   lastEpisodesTitle = TITLES.episodes(name, season)
   updatePageTitle(lastEpisodesTitle)
 }
 
-export function setPlayerTitle(title) {
+export function setPlayerTitle(title: string): void {
   updatePageTitle(TITLES.player(title))
 }
 
 // Default JSON-LD schema for non-detail views
-const DEFAULT_JSONLD = JSON.stringify({
+const DEFAULT_JSONLD: string = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "KIROSHI OPTICS",
@@ -125,35 +127,38 @@ const DEFAULT_JSONLD = JSON.stringify({
   }
 })
 
-export function updateJsonLd(type, data) {
+export function updateJsonLd(
+  type: MediaType,
+  data: TmdbDetailResponse | (NormalizedAnime & { genres?: Array<{ name: string }> })
+): void {
   const el = document.getElementById('jsonLd')
   if (!el || !data) return
 
   const schema = type === 'movie' ? {
     "@context": "https://schema.org",
     "@type": "Movie",
-    "name": data.title,
-    "description": data.overview || '',
-    "image": data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : undefined,
-    "datePublished": data.release_date?.slice(0, 4),
-    "genre": data.genres?.map(g => g.name).join(', '),
-    "aggregateRating": data.vote_average ? {
+    "name": (data as TmdbDetailResponse).title ?? '',
+    "description": (data as TmdbDetailResponse).overview ?? '',
+    "image": (data as TmdbDetailResponse).poster_path ? `https://image.tmdb.org/t/p/w500${(data as TmdbDetailResponse).poster_path}` : undefined,
+    "datePublished": (data as TmdbDetailResponse).release_date?.slice(0, 4),
+    "genre": (data as TmdbDetailResponse).genres?.map(g => g.name).join(', '),
+    "aggregateRating": (data as TmdbDetailResponse).vote_average ? {
       "@type": "AggregateRating",
-      "ratingValue": data.vote_average.toFixed(1),
+      "ratingValue": (data as TmdbDetailResponse).vote_average!.toFixed(1),
       "bestRating": "10"
     } : undefined,
   } : {
     "@context": "https://schema.org",
     "@type": "TVSeries",
-    "name": data.name,
-    "description": data.overview || '',
-    "image": data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : undefined,
-    "datePublished": data.first_air_date?.slice(0, 4),
-    "genre": data.genres?.map(g => g.name).join(', '),
-    "numberOfSeasons": data.number_of_seasons,
-    "aggregateRating": data.vote_average ? {
+    "name": (data as TmdbDetailResponse).name ?? (data as NormalizedAnime).title ?? '',
+    "description": (data as TmdbDetailResponse).overview ?? (data as NormalizedAnime).overview ?? '',
+    "image": (data as TmdbDetailResponse).poster_path ? `https://image.tmdb.org/t/p/w500${(data as TmdbDetailResponse).poster_path}` : undefined,
+    "datePublished": (data as TmdbDetailResponse).first_air_date?.slice(0, 4),
+    "genre": (data as TmdbDetailResponse).genres?.map((g: any) => typeof g === 'string' ? g : g.name).join(', ') ?? (data as NormalizedAnime).genres?.join(', '),
+    "numberOfSeasons": (data as TmdbDetailResponse).number_of_seasons,
+    "aggregateRating": (data as TmdbDetailResponse).vote_average ? {
       "@type": "AggregateRating",
-      "ratingValue": data.vote_average.toFixed(1),
+      "ratingValue": (data as TmdbDetailResponse).vote_average!.toFixed(1),
       "bestRating": "10"
     } : undefined,
   }
@@ -161,7 +166,7 @@ export function updateJsonLd(type, data) {
   el.textContent = JSON.stringify(schema)
 }
 
-function resetJsonLd() {
+function resetJsonLd(): void {
   const el = document.getElementById('jsonLd')
   if (el) {
     el.textContent = DEFAULT_JSONLD

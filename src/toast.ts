@@ -2,13 +2,15 @@
 // TOAST NOTIFICATIONS
 // ═══════════════════════════════════════
 
-const TOAST_DURATION = 3000
-const TOAST_MAX = 3
-let toasts = []
-let container = null
+import type { ToastType, ToastConfig } from './types.js'
+
+const TOAST_DURATION: number = 3000
+const TOAST_MAX: number = 3
+let toasts: HTMLElement[] = []
+let container: HTMLElement | null = null
 
 // Toast types with icons and colors
-const TOAST_TYPES = {
+const TOAST_TYPES: Record<ToastType, ToastConfig> = {
   success: {
     icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M13.5 4.5l-7 7L3 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -40,7 +42,7 @@ const TOAST_TYPES = {
   },
 }
 
-function getContainer() {
+function getContainer(): HTMLElement {
   if (!container) {
     container = document.createElement('div')
     container.className = 'toast-container'
@@ -51,14 +53,14 @@ function getContainer() {
   return container
 }
 
-export function showToast(message, type = 'info', duration = TOAST_DURATION) {
-  const toastType = TOAST_TYPES[type] || TOAST_TYPES.info
+export function showToast(message: string, type: ToastType = 'info', duration: number = TOAST_DURATION): HTMLElement {
+  const toastType = TOAST_TYPES[type] ?? TOAST_TYPES.info
   const container = getContainer()
 
   // Remove oldest toast if max reached
   if (toasts.length >= TOAST_MAX) {
     const oldest = toasts.shift()
-    removeToast(oldest)
+    if (oldest) removeToast(oldest)
   }
 
   const toast = document.createElement('div')
@@ -86,21 +88,23 @@ export function showToast(message, type = 'info', duration = TOAST_DURATION) {
   })
 
   // Close button
-  const closeBtn = toast.querySelector('.toast-close')
-  closeBtn.addEventListener('click', () => removeToast(toast))
+  const closeBtn = toast.querySelector<HTMLButtonElement>('.toast-close')
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => removeToast(toast))
+  }
 
   // Auto-dismiss
   const timer = setTimeout(() => removeToast(toast), duration)
-  toast._timer = timer
+  ;(toast as any)._timer = timer
 
   return toast
 }
 
-function removeToast(toast) {
-  if (toast._removed) return
-  toast._removed = true
+function removeToast(toast: HTMLElement): void {
+  if ((toast as any)._removed) return
+  ;(toast as any)._removed = true
 
-  clearTimeout(toast._timer)
+  clearTimeout((toast as any)._timer)
   toast.classList.remove('toast-enter')
   toast.classList.add('toast-exit')
 
@@ -117,6 +121,6 @@ function removeToast(toast) {
   toasts = toasts.filter(t => t !== toast)
 }
 
-function escapeHtml(str) {
+function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }

@@ -2,62 +2,70 @@
 // VIEWS — DOM manipulation & rendering
 // ═══════════════════════════════════════
 
-import { IMG_BASE, CLASSES, HOME_ROWS, ROW_OBSERVER_MARGIN, SKELETON_COUNT_HOME, SKELETON_COUNT_SEARCH, SEARCH_DEBOUNCE_MS } from './constants.js'
+import type {
+  MediaItem,
+  NormalizedAnime,
+  TmdbMedia,
+  TmdbEpisode,
+  TmdbDetailResponse,
+  ContinueWatchingItem,
+  DomRefs,
+  ViewCallbacks,
+  MediaType,
+  AniListDetailResponse,
+} from './types.js'
+import { IMG_BASE, CLASSES, HOME_ROWS, SKELETON_COUNT_HOME, SKELETON_COUNT_SEARCH, SEARCH_DEBOUNCE_MS } from './constants.js'
 import { tmdb } from './api.js'
-import { getTrendingAnime, getPopularAnime, getTopRatedAnime, getAnimeDetail, searchAnime as searchAnimeFromAnilist } from './anilist.js'
+import { getTrendingAnime, getPopularAnime, getAnimeDetail, searchAnime as searchAnimeFromAnilist } from './anilist.js'
 import { state, getFavorites, isFavorite, toggleFavorite, removeFromFavorites, getContinueWatching, removeFromContinueWatching } from './state.js'
-import { playMovie, playAnime } from './player.js'
+import { playMovie } from './player.js'
 import { showToast } from './toast.js'
 import { setDetailTitle, updateJsonLd, setEpisodesTitle } from './router.js'
 
 // DOM references (injected by main)
-let dom = {}
-let rowObserver
-let onShowView
-let onGoHome
-let onOpenDetail
-let onOpenSeason
-let onLoadMore
-let onOpenAnime
-let onOpenAnimeEpisode
-let onOpenAnimeEpisodes
-let playerFrame
-let continueWatchingRow = null // Track the Continue Watching row
+let dom: Partial<DomRefs> = {}
+let rowObserver: IntersectionObserver
+let onShowView: ViewCallbacks['onShowView']
+let onOpenDetail: ViewCallbacks['onOpenDetail']
+let onOpenSeason: ViewCallbacks['onOpenSeason']
+let onLoadMore: ViewCallbacks['onLoadMore']
+let onOpenAnime: ViewCallbacks['onOpenAnime']
+let onOpenAnimeEpisode: ViewCallbacks['onOpenAnimeEpisode']
+let onOpenAnimeEpisodes: ViewCallbacks['onOpenAnimeEpisodes']
+let continueWatchingRow: HTMLElement | null = null // Track the Continue Watching row
 
-export function initViews(domRefs, callbacks) {
+export function initViews(domRefs: DomRefs, callbacks: ViewCallbacks): void {
   dom = domRefs
   rowObserver = callbacks.rowObserver
   onShowView = callbacks.onShowView
-  onGoHome = callbacks.onGoHome
   onOpenDetail = callbacks.onOpenDetail
   onOpenSeason = callbacks.onOpenSeason
   onLoadMore = callbacks.onLoadMore
   onOpenAnime = callbacks.onOpenAnime
   onOpenAnimeEpisode = callbacks.onOpenAnimeEpisode
   onOpenAnimeEpisodes = callbacks.onOpenAnimeEpisodes
-  playerFrame = domRefs.playerFrame
 }
 
 // ═══════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════
 
-export function escHtml(str = '') {
+export function escHtml(str: string = ''): string {
   if (!str) return ''
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export function debounce(fn, delay) {
-  let timer = null
-  return (...args) => {
-    clearTimeout(timer)
+export function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer!)
     timer = setTimeout(() => fn(...args), delay)
   }
 }
 
-export function throttle(fn, limit) {
+export function throttle<T extends (...args: any[]) => any>(fn: T, limit: number): (...args: Parameters<T>) => void {
   let inThrottle = false
-  return (...args) => {
+  return (...args: Parameters<T>) => {
     if (!inThrottle) {
       fn(...args)
       inThrottle = true
@@ -70,15 +78,15 @@ export function throttle(fn, limit) {
 // LOADER
 // ═══════════════════════════════════════
 
-export function setLoading(on) {
-  dom.loader.classList.toggle(CLASSES.HIDDEN, !on)
+export function setLoading(on: boolean): void {
+  dom.loader?.classList.toggle(CLASSES.HIDDEN, !on)
 }
 
 // ═══════════════════════════════════════
 // SKELETON CARDS
 // ═══════════════════════════════════════
 
-export function buildSkeletonCard(height = '240px') {
+export function buildSkeletonCard(height: string = '240px'): HTMLElement {
   const card = document.createElement('div')
   card.className = `${CLASSES.RESULT_CARD} ${CLASSES.SKELETON}`
   card.style.height = height
@@ -89,24 +97,27 @@ export function buildSkeletonCard(height = '240px') {
 // IMAGE PREFETCHER
 // ═══════════════════════════════════════
 
-const prefetchCache = new Set()
-const prefetchQueue = []
+const prefetchCache = new Set<string>()
+const prefetchQueue: string[] = []
 let prefetching = false
 
-export function prefetchImage(src) {
+export function prefetchImage(src: string): void {
   if (!src || prefetchCache.has(src)) return
   prefetchCache.add(src)
   prefetchQueue.push(src)
   if (!prefetching) processPrefetchQueue()
 }
 
-function processPrefetchQueue() {
-  if (prefetchQueue.length === 0) { prefetching = false; return }
+function processPrefetchQueue(): void {
+  if (prefetchQueue.length === 0) {
+    prefetching = false
+    return
+  }
   prefetching = true
   const link = document.createElement('link')
   link.rel = 'prefetch'
   link.as = 'image'
-  link.href = prefetchQueue.shift()
+  link.href = prefetchQueue.shift()!
   document.head.appendChild(link)
   setTimeout(processPrefetchQueue, 50)
 }
@@ -115,31 +126,35 @@ function processPrefetchQueue() {
 // RESULT CARD
 // ═══════════════════════════════════════
 
-export function buildResultCard(item, enablePrefetch = false) {
-  const isTV = item.media_type === 'tv'
-  const isAnime = item.media_type === 'anime'
-  const title = item.title || item.name || 'Untitled'
-  
+export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, enablePrefetch: boolean = false): HTMLElement {
+  const isTV = (item as any).media_type === 'tv'
+  const isAnime = (item as any).media_type === 'anime'
+  const title = (item as any).title || (item as any).name || 'Untitled'
+
   // Handle year safely - AniList returns number, TMDB returns string
-  const rawYear = item.release_date || item.first_air_date || item.year || item.seasonYear || ''
+  const rawYear = (item as any).release_date || (item as any).first_air_date || (item as any).year || (item as any).seasonYear || ''
   const year = typeof rawYear === 'string' ? rawYear.slice(0, 4) : String(rawYear || '').slice(0, 4)
-  
-  const rating = item.vote_average ? item.vote_average.toFixed(1) : (item.rating || null)
-  
+
+  const rating = (item as any).vote_average ? (item as any).vote_average.toFixed(1) : ((item as any).rating || null)
+
   // Handle poster: AniList returns full URLs, TMDB returns relative paths
-  const isFullUrl = (p) => p && p.startsWith('http')
-  const poster = isFullUrl(item.poster_path)
-    ? item.poster_path
-    : (item.poster_path
-      ? `${IMG_BASE}/w342${item.poster_path}`
-      : (item.posterUrl ? item.posterUrl : (item.backdrop_path ? `${IMG_BASE}/w500${item.backdrop_path}` : null)))
+  const isFullUrl = (p: string | null | undefined) => p && p.startsWith('http')
+  const posterPath = (item as any).poster_path
+  const posterUrl = (item as any).posterUrl
+  const backdropPath = (item as any).backdrop_path
+  
+  const poster = isFullUrl(posterPath)
+    ? posterPath
+    : (posterPath
+      ? `${IMG_BASE}/w342${posterPath}`
+      : (posterUrl ? posterUrl : (backdropPath ? `${IMG_BASE}/w500${backdropPath}` : null)))
 
   const card = document.createElement('div')
   card.className = CLASSES.RESULT_CARD
-  card.dataset.id = item.id
-  card.dataset.mediaType = item.media_type
+  ;(card as any).dataset.id = (item as any).id
+  ;(card as any).dataset.mediaType = (item as any).media_type
 
-  const fav = isFavorite(item.id)
+  const fav = isFavorite((item as any).id)
 
   card.innerHTML = `
     <button class="${CLASSES.FAV_BTN} ${fav ? CLASSES.FAV_ACTIVE : ''}" aria-label="Favorite">
@@ -162,10 +177,11 @@ export function buildResultCard(item, enablePrefetch = false) {
     </div>
   `
 
-  card.querySelector(`.${CLASSES.FAV_BTN}`).addEventListener('click', (e) => {
+  const favBtn = card.querySelector<HTMLButtonElement>(`.${CLASSES.FAV_BTN}`)
+  favBtn?.addEventListener('click', (e) => {
     e.stopPropagation()
-    const isNowFav = toggleFavorite(item)
-    card.querySelector(`.${CLASSES.FAV_BTN}`).classList.toggle(CLASSES.FAV_ACTIVE, isNowFav)
+    const isNowFav = toggleFavorite(item as MediaItem)
+    card.querySelector(`.${CLASSES.FAV_BTN}`)?.classList.toggle(CLASSES.FAV_ACTIVE, isNowFav)
     showToast(
       isNowFav ? `Added "${title}" to watchlist` : `Removed "${title}" from watchlist`,
       isNowFav ? 'success' : 'info'
@@ -174,16 +190,16 @@ export function buildResultCard(item, enablePrefetch = false) {
 
   card.addEventListener('click', () => {
     if (isAnime) {
-      onOpenAnime(item.id)
+      onOpenAnime((item as any).id)
     } else {
-      onOpenDetail(item.id, item.media_type)
+      onOpenDetail((item as any).id, (item as any).media_type)
     }
   })
 
   // PERFORMANCE: Prefetch images on hover
   if (enablePrefetch) {
     card.addEventListener('mouseenter', () => {
-      const img = card.querySelector('img')
+      const img = card.querySelector<HTMLImageElement>('img')
       if (img && img.src) prefetchImage(img.src)
     }, { passive: true })
   }
@@ -195,7 +211,8 @@ export function buildResultCard(item, enablePrefetch = false) {
 // HOME ROWS
 // ═══════════════════════════════════════
 
-export async function loadHomeRows() {
+export async function loadHomeRows(): Promise<void> {
+  if (!dom.homeRows) return
   dom.homeRows.innerHTML = ''
 
   // Continue Watching row (if any) — always first, never shuffled
@@ -214,7 +231,7 @@ export async function loadHomeRows() {
 
   // Build TMDB rows and shuffle
   const shuffledTmdb = shuffleArray([...HOME_ROWS])
-  const tmdbRows = []
+  const tmdbRows: HTMLElement[] = []
   for (const rowConfig of shuffledTmdb) {
     const row = await buildHomeRow(rowConfig.title, rowConfig.path)
     tmdbRows.push(row)
@@ -226,15 +243,20 @@ export async function loadHomeRows() {
   const remaining = shuffleArray([...tmdbRows.slice(2), ...animeRows])
 
   // Append in order
-  topTwo.forEach(r => dom.homeRows.appendChild(r))
-  remaining.forEach(r => dom.homeRows.appendChild(r))
+  topTwo.forEach(r => dom.homeRows!.appendChild(r))
+  remaining.forEach(r => dom.homeRows!.appendChild(r))
 }
 
 // Fisher-Yates shuffle
-function shuffleArray(arr) {
+function shuffleArray<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    const tempI = arr[i]
+    const tempJ = arr[j]
+    if (tempI !== undefined && tempJ !== undefined) {
+      arr[i] = tempJ
+      arr[j] = tempI
+    }
   }
   return arr
 }
@@ -243,7 +265,7 @@ function shuffleArray(arr) {
 // CONTINUE WATCHING ROW
 // ═══════════════════════════════════════
 
-function buildContinueWatchingRow(items) {
+function buildContinueWatchingRow(items: ContinueWatchingItem[]): HTMLElement {
   const row = document.createElement('div')
   row.className = CLASSES.HOME_ROW
 
@@ -266,9 +288,9 @@ function buildContinueWatchingRow(items) {
     <div class="row-content"></div>
   `
 
-  const contentEl = row.querySelector('.row-content')
-  const prevBtn = row.querySelector('.prev')
-  const nextBtn = row.querySelector('.next')
+  const contentEl = row.querySelector('.row-content') as HTMLElement
+  const prevBtn = row.querySelector('.prev') as HTMLButtonElement
+  const nextBtn = row.querySelector('.next') as HTMLButtonElement
 
   items.forEach(item => {
     const card = buildContinueWatchingCard(item)
@@ -280,13 +302,13 @@ function buildContinueWatchingRow(items) {
   return row
 }
 
-function buildContinueWatchingCard(item) {
+function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLElement {
   const isTV = item.media_type === 'tv'
   const isAnime = item.media_type === 'anime'
-  const title = item.title || item.name || 'Untitled'
+  const title = item.title || 'Untitled'
 
   // Handle poster: AniList returns full URLs, TMDB returns relative paths
-  const isFullUrl = (p) => p && p.startsWith('http')
+  const isFullUrl = (p: string | null | undefined) => p && p.startsWith('http')
   const rawPoster = item.poster_path
   const poster = isFullUrl(rawPoster)
     ? rawPoster
@@ -296,7 +318,7 @@ function buildContinueWatchingCard(item) {
 
   const card = document.createElement('div')
   card.className = CLASSES.RESULT_CARD
-  card.dataset.id = item.id
+  ;(card as any).dataset.id = item.id
   card.style.position = 'relative'
 
   card.innerHTML = `
@@ -320,7 +342,8 @@ function buildContinueWatchingCard(item) {
   `
 
   // Remove button
-  card.querySelector('.remove-watching-btn').addEventListener('click', (e) => {
+  const removeBtn = card.querySelector<HTMLButtonElement>('.remove-watching-btn')
+  removeBtn?.addEventListener('click', (e) => {
     e.stopPropagation()
     removeFromContinueWatching(item.id)
     card.style.transform = 'scale(0.8)'
@@ -335,7 +358,7 @@ function buildContinueWatchingCard(item) {
       // For anime, set pending resume and open detail
       const epIdx = (item.episode || 1) - 1 // Convert 1-based to 0-based
       state.pendingAnimeResume = { episodeIndex: epIdx, title }
-      onOpenAnime(item.tmdbId || item.id)
+      onOpenAnime(item.tmdbId || Number(item.id))
     } else if (isTV && item.season && item.episode) {
       // Navigate to detail then season — always use raw tmdbId
       onOpenDetail(item.tmdbId, 'tv')
@@ -352,7 +375,7 @@ function buildContinueWatchingCard(item) {
 // REFRESH CONTINUE WATCHING ROW
 // ═══════════════════════════════════════
 
-export function refreshContinueWatchingRow() {
+export function refreshContinueWatchingRow(): void {
   const watching = getContinueWatching()
 
   if (watching.length === 0) {
@@ -367,17 +390,17 @@ export function refreshContinueWatchingRow() {
   } else {
     // Row doesn't exist but we have items — rebuild it
     // Insert before the first home row
-    const firstHomeRow = dom.homeRows.querySelector(`.${CLASSES.HOME_ROW}`)
+    const firstHomeRow = dom.homeRows?.querySelector(`.${CLASSES.HOME_ROW}`)
     continueWatchingRow = buildContinueWatchingRow(watching)
     if (firstHomeRow) {
-      dom.homeRows.insertBefore(continueWatchingRow, firstHomeRow)
+      dom.homeRows?.insertBefore(continueWatchingRow, firstHomeRow)
     } else {
-      dom.homeRows.appendChild(continueWatchingRow)
+      dom.homeRows?.appendChild(continueWatchingRow)
     }
   }
 }
 
-async function buildHomeRow(title, path) {
+async function buildHomeRow(title: string, path: string): Promise<HTMLElement> {
   const row = document.createElement('div')
   row.className = CLASSES.HOME_ROW
 
@@ -400,25 +423,25 @@ async function buildHomeRow(title, path) {
     <div class="row-content"></div>
   `
 
-  const contentEl = row.querySelector('.row-content')
-  const prevBtn = row.querySelector('.prev')
-  const nextBtn = row.querySelector('.next')
+  const contentEl = row.querySelector('.row-content') as HTMLElement
+  const prevBtn = row.querySelector('.prev') as HTMLButtonElement
+  const nextBtn = row.querySelector('.next') as HTMLButtonElement
 
   // PERFORMANCE: Lazy load row data with IntersectionObserver
-  row._loadRowData = async () => {
+  ;(row as any)._loadRowData = async () => {
     // Show skeleton placeholders
     for (let i = 0; i < SKELETON_COUNT_HOME; i++) {
       contentEl.appendChild(buildSkeletonCard())
     }
 
     try {
-      const data = await tmdb(path)
-      const items = data.results.filter(r => r.poster_path || r.backdrop_path)
+      const data = await tmdb<any>(path)
+      const items = data.results.filter((r: TmdbMedia) => r.poster_path || r.backdrop_path)
 
       contentEl.innerHTML = '' // Clear skeletons
 
       if (items.length > 0) {
-        items.forEach(item => {
+        items.forEach((item: TmdbMedia) => {
           if (!item.media_type) {
             if (path.includes('/movie')) item.media_type = 'movie'
             else if (path.includes('/tv')) item.media_type = 'tv'
@@ -429,7 +452,8 @@ async function buildHomeRow(title, path) {
         setupRowPrefetching(contentEl)
       } else {
         contentEl.innerHTML = '<span style="color:var(--text-3);padding:0 12px">No results</span>'
-        row.querySelector('.row-nav-btns').style.display = 'none'
+        const navBtns = row.querySelector('.row-nav-btns')
+        if (navBtns) (navBtns as HTMLElement).style.display = 'none'
       }
 
       setupRowNavigation(contentEl, prevBtn, nextBtn)
@@ -446,16 +470,17 @@ async function buildHomeRow(title, path) {
   return row
 }
 
-function setupRowPrefetching(contentEl) {
+function setupRowPrefetching(contentEl: HTMLElement): void {
   const cards = contentEl.querySelectorAll(`.${CLASSES.RESULT_CARD}`)
   cards.forEach(card => {
     card.addEventListener('mouseenter', () => {
-      const img = card.querySelector('img')
+      const img = (card as HTMLElement).querySelector('img')
       if (img && img.src) {
         const allImages = Array.from(contentEl.querySelectorAll(`.${CLASSES.RESULT_CARD} img`))
         const idx = allImages.indexOf(img)
         for (let i = idx; i < Math.min(idx + 3, allImages.length); i++) {
-          prefetchImage(allImages[i].src)
+          const imgEl = allImages[i] as HTMLImageElement
+          if (imgEl?.src) prefetchImage(imgEl.src)
         }
       }
     }, { passive: true })
@@ -466,7 +491,10 @@ function setupRowPrefetching(contentEl) {
 // ANIME HOME ROWS
 // ═══════════════════════════════════════
 
-async function buildAnimeHomeRow(title, fetchFn) {
+async function buildAnimeHomeRow(
+  title: string,
+  fetchFn: () => Promise<NormalizedAnime[]>
+): Promise<HTMLElement> {
   const row = document.createElement('div')
   row.className = CLASSES.HOME_ROW
 
@@ -489,11 +517,11 @@ async function buildAnimeHomeRow(title, fetchFn) {
     <div class="row-content"></div>
   `
 
-  const contentEl = row.querySelector('.row-content')
-  const prevBtn = row.querySelector('.prev')
-  const nextBtn = row.querySelector('.next')
+  const contentEl = row.querySelector('.row-content') as HTMLElement
+  const prevBtn = row.querySelector('.prev') as HTMLButtonElement
+  const nextBtn = row.querySelector('.next') as HTMLButtonElement
 
-  row._loadRowData = async () => {
+  ;(row as any)._loadRowData = async () => {
     for (let i = 0; i < SKELETON_COUNT_HOME; i++) {
       contentEl.appendChild(buildSkeletonCard())
     }
@@ -510,18 +538,20 @@ async function buildAnimeHomeRow(title, fetchFn) {
         setupRowPrefetching(contentEl)
       } else {
         contentEl.innerHTML = '<span style="color:var(--text-3);padding:0 12px">No results</span>'
-        row.querySelector('.row-nav-btns').style.display = 'none'
+        const navBtns = row.querySelector('.row-nav-btns')
+        if (navBtns) (navBtns as HTMLElement).style.display = 'none'
       }
 
       setupRowNavigation(contentEl, prevBtn, nextBtn)
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Error loading anime row ${title}`, e)
       const isRateLimit = e.message && e.message.includes('429')
       const msg = isRateLimit
         ? 'Rate limited. Refresh the page to try again.'
         : 'Failed to load anime data. Check your connection and refresh.'
       contentEl.innerHTML = `<span style="color:var(--text-3);padding:0 12px">${msg}</span>`
-      row.querySelector('.row-nav-btns').style.display = 'none'
+      const navBtns = row.querySelector('.row-nav-btns')
+      if (navBtns) (navBtns as HTMLElement).style.display = 'none'
     }
   }
 
@@ -529,7 +559,11 @@ async function buildAnimeHomeRow(title, fetchFn) {
   return row
 }
 
-function setupRowNavigation(contentEl, prevBtn, nextBtn) {
+function setupRowNavigation(
+  contentEl: HTMLElement,
+  prevBtn: HTMLButtonElement,
+  nextBtn: HTMLButtonElement
+): void {
   const scrollAmount = () => contentEl.clientWidth * 0.8
   prevBtn.addEventListener('click', () => {
     contentEl.scrollBy({ left: -scrollAmount(), behavior: 'smooth' })
@@ -551,57 +585,57 @@ function setupRowNavigation(contentEl, prevBtn, nextBtn) {
 // SEARCH
 // ═══════════════════════════════════════
 
-export function setupSearch() {
-  let searchTimeout = null
+export function setupSearch(): void {
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
-  const handleInput = debounce((q) => {
+  const handleInput = debounce((q: string) => {
     if (!q) {
-      dom.searchResults.classList.add(CLASSES.HIDDEN)
-      dom.homeRows.classList.remove(CLASSES.HIDDEN)
-      dom.heroText.classList.remove(CLASSES.HIDDEN)
+      dom.searchResults?.classList.add(CLASSES.HIDDEN)
+      dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+      dom.heroText?.classList.remove(CLASSES.HIDDEN)
       return
     }
     doSearch(q, 1)
   }, SEARCH_DEBOUNCE_MS)
 
-  dom.searchInput.addEventListener('input', () => {
-    const q = dom.searchInput.value.trim()
-    dom.clearBtn.classList.toggle('visible', q.length > 0)
-    clearTimeout(searchTimeout)
+  dom.searchInput?.addEventListener('input', () => {
+    const q = dom.searchInput!.value.trim()
+    ;(dom.clearBtn as HTMLElement)?.classList.toggle('visible', q.length > 0)
+    clearTimeout(searchTimeout!)
     searchTimeout = setTimeout(() => handleInput(q), 50)
   })
 
-  dom.clearBtn.addEventListener('click', () => {
-    dom.searchInput.value = ''
-    dom.clearBtn.classList.remove('visible')
-    dom.searchResults.classList.add(CLASSES.HIDDEN)
-    dom.homeRows.classList.remove(CLASSES.HIDDEN)
-    dom.heroText.classList.remove(CLASSES.HIDDEN)
-    dom.resultsGrid.innerHTML = ''
-    dom.searchInput.focus()
+  dom.clearBtn?.addEventListener('click', () => {
+    dom.searchInput!.value = ''
+    ;(dom.clearBtn as HTMLElement).classList.remove('visible')
+    dom.searchResults?.classList.add(CLASSES.HIDDEN)
+    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+    dom.heroText?.classList.remove(CLASSES.HIDDEN)
+    dom.resultsGrid!.innerHTML = ''
+    dom.searchInput?.focus()
   })
 
-  dom.loadMoreBtn.addEventListener('click', () => {
+  dom.loadMoreBtn?.addEventListener('click', () => {
     doSearch(state.searchQuery, state.searchPage + 1, true)
   })
 }
 
-async function doSearch(query, page = 1, append = false) {
+async function doSearch(query: string, page: number = 1, append: boolean = false): Promise<void> {
   if (!append) {
     // Save focus to restore after view transition
     const focusedEl = document.activeElement
     onShowView('home')
     // Restore focus to search input if it had focus before
     if (focusedEl === dom.searchInput) {
-      requestAnimationFrame(() => dom.searchInput.focus({ preventScroll: true }))
+      requestAnimationFrame(() => dom.searchInput?.focus({ preventScroll: true }))
     }
-    dom.resultsGrid.innerHTML = ''
+    dom.resultsGrid!.innerHTML = ''
     for (let i = 0; i < SKELETON_COUNT_SEARCH; i++) {
-      dom.resultsGrid.appendChild(buildSkeletonCard())
+      dom.resultsGrid!.appendChild(buildSkeletonCard())
     }
-    dom.searchResults.classList.remove(CLASSES.HIDDEN)
-    dom.homeRows.classList.add(CLASSES.HIDDEN)
-    dom.heroText.classList.add(CLASSES.HIDDEN)
+    dom.searchResults?.classList.remove(CLASSES.HIDDEN)
+    dom.homeRows?.classList.add(CLASSES.HIDDEN)
+    dom.heroText?.classList.add(CLASSES.HIDDEN)
   }
   state.searchQuery = query
   state.searchPage = page
@@ -609,18 +643,18 @@ async function doSearch(query, page = 1, append = false) {
   try {
     // Search both TMDB and AniList in parallel
     const [tmdbResult, animeResult] = await Promise.allSettled([
-      tmdb('/search/multi', { query, page, include_adult: false }),
+      tmdb<any>('/search/multi', { query, page, include_adult: false }),
       searchAnimeFromAnilist(query, page),
     ])
 
-    let tmdbItems = []
-    let animeItems = []
+    let tmdbItems: any[] = []
+    let animeItems: any[] = []
     let totalResults = 0
 
     // Process TMDB results
     if (tmdbResult.status === 'fulfilled') {
       const data = tmdbResult.value
-      tmdbItems = data.results.filter(r => r.media_type !== 'person' && (r.poster_path || r.backdrop_path))
+      tmdbItems = data.results.filter((r: any) => r.media_type !== 'person' && (r.poster_path || r.backdrop_path))
       totalResults += data.total_results
     }
 
@@ -631,21 +665,21 @@ async function doSearch(query, page = 1, append = false) {
     }
 
     if (!append) {
-      dom.resultsGrid.innerHTML = ''
-      dom.resultsTitle.textContent = `"${escHtml(query)}"`
-      dom.resultsCount.textContent = `${totalResults.toLocaleString()} results`
+      dom.resultsGrid!.innerHTML = ''
+      dom.resultsTitle!.textContent = `"${escHtml(query)}"`
+      dom.resultsCount!.textContent = `${totalResults.toLocaleString()} results`
     }
 
     // Combine and render results (TMDB first, then anime)
     const allItems = [...tmdbItems, ...animeItems]
     allItems.forEach(item => {
-      dom.resultsGrid.appendChild(buildResultCard(item, true))
+      dom.resultsGrid!.appendChild(buildResultCard(item, true))
     })
 
     // Show load more if either source has more
     const tmdbHasMore = tmdbResult.status === 'fulfilled' && tmdbResult.value.total_pages > page
     const animeHasMore = animeResult.status === 'fulfilled' && animeResult.value.hasNextPage
-    dom.loadMore.classList.toggle(CLASSES.HIDDEN, !tmdbHasMore && !animeHasMore && allItems.length === 0)
+    dom.loadMore?.classList.toggle(CLASSES.HIDDEN, !tmdbHasMore && !animeHasMore && allItems.length === 0)
 
   } catch (e) {
     console.error(e)
@@ -653,28 +687,28 @@ async function doSearch(query, page = 1, append = false) {
   }
 }
 
-function showSearchError() {
-  dom.resultsGrid.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:32px">Failed to load results. Please try again.</p>'
+function showSearchError(): void {
+  dom.resultsGrid!.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:32px">Failed to load results. Please try again.</p>'
 }
 
 // ═══════════════════════════════════════
 // ANIME SEARCH
 // ═══════════════════════════════════════
 
-export async function searchAnime(query, page = 1, append = false) {
+export async function searchAnime(query: string, page: number = 1, append: boolean = false): Promise<void> {
   if (!append) {
     const focusedEl = document.activeElement
     onShowView('home')
     if (focusedEl === dom.searchInput) {
-      requestAnimationFrame(() => dom.searchInput.focus({ preventScroll: true }))
+      requestAnimationFrame(() => dom.searchInput?.focus({ preventScroll: true }))
     }
-    dom.resultsGrid.innerHTML = ''
+    dom.resultsGrid!.innerHTML = ''
     for (let i = 0; i < SKELETON_COUNT_SEARCH; i++) {
-      dom.resultsGrid.appendChild(buildSkeletonCard())
+      dom.resultsGrid!.appendChild(buildSkeletonCard())
     }
-    dom.searchResults.classList.remove(CLASSES.HIDDEN)
-    dom.homeRows.classList.add(CLASSES.HIDDEN)
-    dom.heroText.classList.add(CLASSES.HIDDEN)
+    dom.searchResults?.classList.remove(CLASSES.HIDDEN)
+    dom.homeRows?.classList.add(CLASSES.HIDDEN)
+    dom.heroText?.classList.add(CLASSES.HIDDEN)
   }
 
   state.searchQuery = query
@@ -685,16 +719,16 @@ export async function searchAnime(query, page = 1, append = false) {
     state.searchTotal = result.total
 
     if (!append) {
-      dom.resultsGrid.innerHTML = ''
-      dom.resultsTitle.textContent = `"${escHtml(query)}"`
-      dom.resultsCount.textContent = `${result.total.toLocaleString()} anime results`
+      dom.resultsGrid!.innerHTML = ''
+      dom.resultsTitle!.textContent = `"${escHtml(query)}"`
+      dom.resultsCount!.textContent = `${result.total.toLocaleString()} anime results`
     }
 
     result.results.forEach(item => {
-      dom.resultsGrid.appendChild(buildResultCard(item, true))
+      dom.resultsGrid!.appendChild(buildResultCard(item, true))
     })
 
-    dom.loadMore.classList.toggle(CLASSES.HIDDEN, !result.hasNextPage || result.results.length === 0)
+    dom.loadMore?.classList.toggle(CLASSES.HIDDEN, !result.hasNextPage || result.results.length === 0)
 
   } catch (e) {
     console.error(e)
@@ -706,21 +740,21 @@ export async function searchAnime(query, page = 1, append = false) {
 // FAVORITES VIEW
 // ═══════════════════════════════════════
 
-export function openFavs() {
-  dom.favsGrid.innerHTML = ''
+export function openFavs(): void {
+  dom.favsGrid!.innerHTML = ''
   const favs = Object.values(getFavorites())
 
   if (favs.length === 0) {
-    dom.favsGrid.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:64px 0">Your watchlist is empty.<br>Add movies and series to keep track.</p>'
+    dom.favsGrid!.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:64px 0">Your watchlist is empty.<br>Add movies and series to keep track.</p>'
     onShowView('favs')
     return
   }
 
   favs.forEach(item => {
-    const card = buildResultCard(item)
+    const card = buildResultCard(item as MediaItem)
     // Hide the heart button in watchlist view (X button is enough)
     const heartBtn = card.querySelector(`.${CLASSES.FAV_BTN}`)
-    if (heartBtn) heartBtn.style.display = 'none'
+    if (heartBtn) (heartBtn as HTMLElement).style.display = 'none'
 
     // Add remove button for watchlist view
     const removeBtn = document.createElement('button')
@@ -738,14 +772,15 @@ export function openFavs() {
       card.style.transition = 'transform 0.3s ease, opacity 0.3s ease'
       setTimeout(() => card.remove(), 300)
     })
+
     card.style.position = 'relative'
     card.appendChild(removeBtn)
-    dom.favsGrid.appendChild(card)
+    dom.favsGrid!.appendChild(card)
   })
   onShowView('favs')
 }
 
-export function goHome() {
+export function goHome(): void {
   if (document.startViewTransition) {
     try {
       document.startViewTransition(() => {
@@ -760,13 +795,13 @@ export function goHome() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function clearSearchState() {
-  dom.searchInput.value = ''
-  dom.clearBtn.classList.remove('visible')
-  dom.searchResults.classList.add(CLASSES.HIDDEN)
-  dom.homeRows.classList.remove(CLASSES.HIDDEN)
-  dom.heroText.classList.remove(CLASSES.HIDDEN)
-  dom.resultsGrid.innerHTML = ''
+function clearSearchState(): void {
+  dom.searchInput!.value = ''
+  ;(dom.clearBtn as HTMLElement).classList.remove('visible')
+  dom.searchResults?.classList.add(CLASSES.HIDDEN)
+  dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+  dom.heroText?.classList.remove(CLASSES.HIDDEN)
+  dom.resultsGrid!.innerHTML = ''
   state.searchQuery = ''
 }
 
@@ -774,7 +809,7 @@ function clearSearchState() {
 // ANIME DETAIL VIEW
 // ═══════════════════════════════════════
 
-export async function openAnime(id) {
+export async function openAnime(id: number): Promise<void> {
   setLoading(true)
   state.currentAnimeId = id
 
@@ -801,7 +836,7 @@ export async function openAnime(id) {
         })
       })
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
     showDetailError(e)
   } finally {
@@ -809,26 +844,26 @@ export async function openAnime(id) {
   }
 }
 
-function showAnimeDetail(data) {
-  dom.detailTitle.textContent = data.title
-  dom.detailType.textContent = 'Anime'
-  dom.detailType.classList.remove(CLASSES.HIDDEN)
-  state.currentPosterPath = data.posterUrl
+function showAnimeDetail(data: AniListDetailResponse): void {
+  dom.detailTitle!.textContent = data.title
+  dom.detailType!.textContent = 'Anime'
+  dom.detailType!.classList.remove(CLASSES.HIDDEN)
+  state.currentPosterPath = data.poster_path ?? data.posterUrl ?? null
 
   setDetailTitle(data.title)
 
-  const poster = data.posterUrl || null
-  const year = data.year || ''
+  const poster = data.posterUrl ?? null
+  const year = data.year ?? ''
   const rating = data.rating ? `★ ${data.rating}` : ''
   const genres = (data.genres || []).join(' · ')
-  const episodes = data.episodes || 0
-  const format = data.format || 'TV'
+  const episodes = data.episodes ?? 0
+  const format = data.format ?? 'TV'
   const studios = (data.studios || []).join(', ')
 
   // Store anime data for episodes view
-  state._currentAnimeData = data
+  state._currentAnimeData = data as any
 
-  dom.detailContent.innerHTML = `
+  dom.detailContent!.innerHTML = `
     <div class="movie-detail">
       <div class="movie-poster">
         ${poster ? `<img src="${poster}" alt="${escHtml(data.title)}" />` : '<div class="no-poster" style="height:360px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--glass-bg)">🎬</div>'}
@@ -870,15 +905,16 @@ function showAnimeDetail(data) {
   }
 
   // Favorite button
-  document.getElementById('favAnimeBtn').addEventListener('click', (e) => {
+  const favBtn = document.getElementById('favAnimeBtn')
+  favBtn?.addEventListener('click', (e) => {
     const isNowFav = toggleFavorite({
       id: data.id,
       title: data.title,
       poster_path: data.posterUrl,
       posterUrl: data.posterUrl,
       media_type: 'anime'
-    })
-    e.target.textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
+    } as MediaItem)
+    ;(e.target as HTMLElement).textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
     showToast(
       isNowFav ? `Added "${data.title}" to watchlist` : `Removed "${data.title}" from watchlist`,
       isNowFav ? 'success' : 'info'
@@ -890,23 +926,23 @@ function showAnimeDetail(data) {
 // ANIME EPISODES VIEW
 // ═══════════════════════════════════════
 
-export async function openAnimeEpisodes(title) {
-  const data = state._currentAnimeData
+export async function openAnimeEpisodes(title: string): Promise<void> {
+  const data = state._currentAnimeData as AniListDetailResponse | undefined
   if (!data) return
 
   // Clear TV episodes to prevent cross-contamination
   state.currentEpisodes = []
   state.currentEpIndex = null
 
-  dom.episodesTitle.textContent = `${escHtml(title)} · All Episodes`
+  dom.episodesTitle!.textContent = `${escHtml(title)} · All Episodes`
   setEpisodesTitle(title, 1)
 
-  const totalEpisodes = data.episodes || 0
+  const totalEpisodes = data.episodes ?? 0
   const airingSchedule = data.airingSchedule || []
   const now = Math.floor(Date.now() / 1000) // Current time in Unix seconds
 
   // Build episode list, only include episodes that have aired
-  const episodeList = []
+  const episodeList: Array<{ number: number; name: string }> = []
   for (let i = 1; i <= totalEpisodes; i++) {
     // Check if this episode has aired: find its airingAt time
     const schedule = airingSchedule.find(s => s.episode === i)
@@ -920,27 +956,27 @@ export async function openAnimeEpisodes(title) {
       episodeList.push({ number: i, name: `Episode ${i}` })
     }
   }
-  state.currentAnimeEpisodes = episodeList
+  state.currentAnimeEpisodes = episodeList as any
 
-  dom.episodesContent.innerHTML = ''
+  dom.episodesContent!.innerHTML = ''
   if (episodeList.length === 0) {
-    dom.episodesContent.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:48px 0">No episodes available yet. Check back later!</p>'
+    dom.episodesContent!.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:48px 0">No episodes available yet. Check back later!</p>'
   } else {
     episodeList.forEach((ep, idx) => {
-      dom.episodesContent.appendChild(buildAnimeEpisodeItem(ep, idx, data))
+      dom.episodesContent!.appendChild(buildAnimeEpisodeItem(ep, idx, data))
     })
   }
 
   onShowView('episodes')
 }
 
-function buildAnimeEpisodeItem(ep, idx, data) {
+function buildAnimeEpisodeItem(ep: { number: number; name: string }, idx: number, data: AniListDetailResponse): HTMLElement {
   const item = document.createElement('div')
   const isCurrentEp = state.currentAnimeEpIndex === idx
   item.className = `${CLASSES.EPISODE_ITEM}${isCurrentEp ? ' current-episode' : ''}`
 
   // Use anime poster or banner as thumbnail background
-  const bgImage = data.posterUrl || data.banner_path || null
+  const bgImage = data.posterUrl ?? data.banner_path ?? null
 
   item.innerHTML = `
     <div class="ep-thumb" style="${bgImage ? `background-image:url('${bgImage}');background-size:cover;background-position:center;` : ''}">
@@ -971,23 +1007,23 @@ function buildAnimeEpisodeItem(ep, idx, data) {
 // DETAIL VIEW (Series / Movies)
 // ═══════════════════════════════════════
 
-export async function openDetail(id, type) {
+export async function openDetail(id: number, type: MediaType): Promise<void> {
   setLoading(true)
   state.currentSerieId = id
-  state.currentSerieType = type
+  state.currentSerieType = type === 'anime' ? null : type
 
   // Clear anime state to prevent cross-contamination
   state.currentAnimeId = null
   state.currentAnimeEpisodes = []
   state.currentAnimeEpIndex = null
-  state._currentAnimeData = null
+  state._currentAnimeData = undefined
 
   try {
     // Fetch main data + cast + similar in parallel
     const [mainData, castData, similarData] = await Promise.all([
-      tmdb(`/${type}/${id}`),
-      tmdb(`/${type}/${id}/credits`),
-      tmdb(`/${type}/${id}/similar`),
+      tmdb<TmdbDetailResponse>(`/${type}/${id}`),
+      tmdb<any>(`/${type}/${id}/credits`),
+      tmdb<any>(`/${type}/${id}/similar`),
     ])
 
     // Store for later use
@@ -1000,7 +1036,7 @@ export async function openDetail(id, type) {
       showMovieDetail(mainData)
     }
     onShowView('detail')
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
     showDetailError(e)
   } finally {
@@ -1008,32 +1044,32 @@ export async function openDetail(id, type) {
   }
 }
 
-function showSeriesDetail(data) {
-  dom.detailTitle.textContent = data.name
-  dom.detailType.textContent = 'Series'
-  dom.detailType.classList.remove(CLASSES.HIDDEN)
-  state.currentPosterPath = data.poster_path
+function showSeriesDetail(data: TmdbDetailResponse): void {
+  dom.detailTitle!.textContent = data.name ?? ''
+  dom.detailType!.textContent = 'Series'
+  dom.detailType!.classList.remove(CLASSES.HIDDEN)
+  state.currentPosterPath = data.poster_path ?? null
 
   // SEO
-  setDetailTitle(data.name)
+  setDetailTitle(data.name ?? '')
   updateJsonLd('tv', data)
 
   const poster = data.poster_path ? `${IMG_BASE}/w500${data.poster_path}` : null
-  const year = (data.first_air_date || '').slice(0, 4)
+  const year = (data.first_air_date ?? '').slice(0, 4)
   const rating = data.vote_average ? `★ ${data.vote_average.toFixed(1)}` : ''
   const genres = (data.genres || []).map(g => g.name).join(' · ')
   const seasons = (data.seasons || []).filter(s => s.season_number > 0)
-  const totalEpisodes = data.number_of_episodes || seasons.reduce((sum, s) => sum + s.episode_count, 0)
-  const cast = state._castData
-  const similar = state._similarData
+  const totalEpisodes = data.number_of_episodes ?? seasons.reduce((sum, s) => sum + s.episode_count, 0)
+  const cast = (state as any)._castData ?? []
+  const similar = (state as any)._similarData ?? []
 
-  dom.detailContent.innerHTML = `
+  dom.detailContent!.innerHTML = `
     <div class="movie-detail">
       <div class="movie-poster">
-        ${poster ? `<img src="${poster}" alt="${escHtml(data.name)}" />` : '<div class="no-poster" style="height:360px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--glass-bg)">🎬</div>'}
+        ${poster ? `<img src="${poster}" alt="${escHtml(data.name ?? '')}" />` : '<div class="no-poster" style="height:360px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--glass-bg)">🎬</div>'}
       </div>
       <div class="movie-info">
-        <h1 class="movie-title">${escHtml(data.name)}</h1>
+        <h1 class="movie-title">${escHtml(data.name ?? '')}</h1>
         <div class="movie-meta-row">
           ${year ? `<span class="meta-chip">${year}</span>` : ''}
           ${totalEpisodes ? `<span class="meta-chip">${totalEpisodes} episodes</span>` : ''}
@@ -1062,7 +1098,7 @@ function showSeriesDetail(data) {
       <div class="cast-section">
         <h3 class="section-subtitle">Cast</h3>
         <div class="cast-grid">
-          ${cast.slice(0, 8).map(c => `
+          ${cast.slice(0, 8).map((c: any) => `
             <div class="cast-card">
               ${c.profile_path ? `<img src="${IMG_BASE}/w185${c.profile_path}" alt="${escHtml(c.name)}" loading="lazy" />` : '<div class="cast-no-img">👤</div>'}
               <div class="cast-name">${escHtml(c.name)}</div>
@@ -1074,22 +1110,22 @@ function showSeriesDetail(data) {
     ` : ''}
   `
 
-  document.getElementById('watchSeriesBtn').addEventListener('click', () => {
+  document.getElementById('watchSeriesBtn')?.addEventListener('click', () => {
     if (seasons.length > 0) {
-      onOpenSeason(seasons[0].season_number, data.name)
+      onOpenSeason(seasons[0]!.season_number, data.name ?? '')
     }
   })
 
-  document.getElementById('favSeriesBtn').addEventListener('click', (e) => {
-    const isNowFav = toggleFavorite({ id: data.id, title: data.name, poster_path: data.poster_path, media_type: 'tv' })
-    e.target.textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
+  document.getElementById('favSeriesBtn')?.addEventListener('click', (e) => {
+    const isNowFav = toggleFavorite({ id: data.id, title: data.name, poster_path: data.poster_path, media_type: 'tv' } as MediaItem)
+    ;(e!.target as HTMLElement).textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
     showToast(
       isNowFav ? `Added "${data.name}" to watchlist` : `Removed "${data.name}" from watchlist`,
       isNowFav ? 'success' : 'info'
     )
   })
 
-  const grid = document.getElementById('seasonsGrid')
+  const grid = document.getElementById('seasonsGrid')!
   seasons.forEach(s => {
     const poster = s.poster_path ? `${IMG_BASE}/w342${s.poster_path}` : null
     const card = document.createElement('div')
@@ -1098,7 +1134,7 @@ function showSeriesDetail(data) {
       ${poster ? `<img src="${poster}" alt="T${s.season_number}" loading="lazy" />` : ''}
       <div class="season-label">Season ${s.season_number}</div>
     `
-    card.addEventListener('click', () => onOpenSeason(s.season_number, data.name))
+    card.addEventListener('click', () => onOpenSeason(s.season_number, data.name ?? ''))
     grid.appendChild(card)
   })
 
@@ -1108,30 +1144,30 @@ function showSeriesDetail(data) {
   }
 }
 
-function showMovieDetail(data) {
-  dom.detailTitle.textContent = data.title
-  dom.detailType.textContent = 'Movie'
-  state.currentPosterPath = data.poster_path
+function showMovieDetail(data: TmdbDetailResponse): void {
+  dom.detailTitle!.textContent = data.title ?? ''
+  dom.detailType!.textContent = 'Movie'
+  state.currentPosterPath = data.poster_path ?? null
 
   // SEO
-  setDetailTitle(data.title)
+  setDetailTitle(data.title ?? '')
   updateJsonLd('movie', data)
 
   const poster = data.poster_path ? `${IMG_BASE}/w500${data.poster_path}` : null
-  const year = (data.release_date || '').slice(0, 4)
+  const year = (data.release_date ?? '').slice(0, 4)
   const runtime = data.runtime ? `${data.runtime} min` : ''
   const rating = data.vote_average ? `★ ${data.vote_average.toFixed(1)}` : ''
   const genres = (data.genres || []).map(g => g.name).join(' · ')
-  const cast = state._castData
-  const similar = state._similarData
+  const cast = (state as any)._castData ?? []
+  const similar = (state as any)._similarData ?? []
 
-  dom.detailContent.innerHTML = `
+  dom.detailContent!.innerHTML = `
     <div class="movie-detail">
       <div class="movie-poster">
-        ${poster ? `<img src="${poster}" alt="${escHtml(data.title)}" />` : '<div class="no-poster" style="height:360px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--glass-bg)">🎬</div>'}
+        ${poster ? `<img src="${poster}" alt="${escHtml(data.title ?? '')}" />` : '<div class="no-poster" style="height:360px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--glass-bg)">🎬</div>'}
       </div>
       <div class="movie-info">
-        <h1 class="movie-title">${escHtml(data.title)}</h1>
+        <h1 class="movie-title">${escHtml(data.title ?? '')}</h1>
         <div class="movie-meta-row">
           ${year ? `<span class="meta-chip">${year}</span>` : ''}
           ${runtime ? `<span class="meta-chip">${runtime}</span>` : ''}
@@ -1156,7 +1192,7 @@ function showMovieDetail(data) {
       <div class="cast-section">
         <h3 class="section-subtitle">Cast</h3>
         <div class="cast-grid">
-          ${cast.slice(0, 8).map(c => `
+          ${cast.slice(0, 8).map((c: any) => `
             <div class="cast-card">
               ${c.profile_path ? `<img src="${IMG_BASE}/w185${c.profile_path}" alt="${escHtml(c.name)}" loading="lazy" />` : '<div class="cast-no-img">👤</div>'}
               <div class="cast-name">${escHtml(c.name)}</div>
@@ -1168,13 +1204,13 @@ function showMovieDetail(data) {
     ` : ''}
   `
 
-  document.getElementById('watchMovieBtn').addEventListener('click', () => {
-    playMovie(data.id, data.title)
+  document.getElementById('watchMovieBtn')?.addEventListener('click', () => {
+    playMovie(data.id, data.title ?? '')
   })
 
-  document.getElementById('favMovieBtn').addEventListener('click', (e) => {
-    const isNowFav = toggleFavorite({ id: data.id, title: data.title, poster_path: data.poster_path, media_type: 'movie' })
-    e.target.textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
+  document.getElementById('favMovieBtn')?.addEventListener('click', (e) => {
+    const isNowFav = toggleFavorite({ id: data.id, title: data.title, poster_path: data.poster_path, media_type: 'movie' } as MediaItem)
+    ;(e!.target as HTMLElement).textContent = isNowFav ? '♥ Favorited' : '♥ Add to Watchlist'
     showToast(
       isNowFav ? `Added "${data.title}" to watchlist` : `Removed "${data.title}" from watchlist`,
       isNowFav ? 'success' : 'info'
@@ -1187,15 +1223,15 @@ function showMovieDetail(data) {
   }
 }
 
-function showDetailError(e) {
-  dom.detailContent.innerHTML = `<p style="color:var(--accent);padding:24px">Error loading content: ${escHtml(e.message)}. Check your connection or TMDB token.</p>`
+function showDetailError(e: Error): void {
+  dom.detailContent!.innerHTML = `<p style="color:var(--accent);padding:24px">Error loading content: ${escHtml(e.message)}. Check your connection or TMDB token.</p>`
 }
 
 // ═══════════════════════════════════════
 // HELPERS — Similar
 // ═══════════════════════════════════════
 
-function appendSimilarRow(items, title) {
+function appendSimilarRow(items: TmdbMedia[], title: string): void {
   const section = document.createElement('div')
   section.className = 'similar-section'
   section.innerHTML = `<h3 class="section-subtitle">${escHtml(title)}</h3>`
@@ -1211,17 +1247,17 @@ function appendSimilarRow(items, title) {
   })
 
   section.appendChild(row)
-  dom.detailContent.appendChild(section)
+  dom.detailContent!.appendChild(section)
 }
 
 // ═══════════════════════════════════════
 // EPISODES VIEW
 // ═══════════════════════════════════════
 
-export async function openSeason(seasonNum, serieName) {
+export async function openSeason(seasonNum: number, serieName: string): Promise<void> {
   setLoading(true)
   state.currentSeason = seasonNum
-  dom.episodesTitle.textContent = `${escHtml(serieName)} · Season ${seasonNum}`
+  dom.episodesTitle!.textContent = `${escHtml(serieName)} · Season ${seasonNum}`
 
   // Clear anime state to prevent cross-contamination
   state.currentAnimeId = null
@@ -1232,25 +1268,25 @@ export async function openSeason(seasonNum, serieName) {
   setEpisodesTitle(serieName, seasonNum)
 
   try {
-    const data = await tmdb(`/tv/${state.currentSerieId}/season/${seasonNum}`)
+    const data = await tmdb<any>(`/tv/${state.currentSerieId}/season/${seasonNum}`)
     const episodes = data.episodes || []
     state.currentEpisodes = episodes
 
-    dom.episodesContent.innerHTML = ''
-    episodes.forEach((ep, idx) => {
-      dom.episodesContent.appendChild(buildEpisodeItem(ep, idx))
+    dom.episodesContent!.innerHTML = ''
+    episodes.forEach((ep: TmdbEpisode, idx: number) => {
+      dom.episodesContent!.appendChild(buildEpisodeItem(ep, idx))
     })
 
     onShowView('episodes')
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
-    dom.episodesContent.innerHTML = '<p style="color:var(--accent);padding:24px">Failed to load episodes.</p>'
+    dom.episodesContent!.innerHTML = '<p style="color:var(--accent);padding:24px">Failed to load episodes.</p>'
   } finally {
     setLoading(false)
   }
 }
 
-function buildEpisodeItem(ep, idx) {
+function buildEpisodeItem(ep: TmdbEpisode, idx: number): HTMLElement {
   const thumb = ep.still_path ? `${IMG_BASE}/w300${ep.still_path}` : null
   const item = document.createElement('div')
   item.className = CLASSES.EPISODE_ITEM
@@ -1272,7 +1308,7 @@ function buildEpisodeItem(ep, idx) {
       <p class="ep-desc">${escHtml(ep.overview || 'No description.')}</p>
     </div>
   `
-  item.addEventListener('click', () => onLoadMore(idx, dom.episodesTitle.textContent.split(' · ')[0]))
+  item.addEventListener('click', () => onLoadMore(idx, dom.episodesTitle!.textContent?.split(' · ')[0] ?? ''))
   return item
 }
 
@@ -1280,12 +1316,12 @@ function buildEpisodeItem(ep, idx) {
 // FAV ICON UPDATER
 // ═══════════════════════════════════════
 
-export function updateAllFavIcons() {
+export function updateAllFavIcons(): void {
   document.querySelectorAll(`.${CLASSES.RESULT_CARD}`).forEach(card => {
-    const id = card.dataset.id
+    const id = (card as any).dataset.id
     if (id) {
-      const isFav = isFavorite(id)
-      const btn = card.querySelector(`.${CLASSES.FAV_BTN}`)
+      const isFav = isFavorite(Number(id))
+      const btn = (card as HTMLElement).querySelector(`.${CLASSES.FAV_BTN}`)
       if (btn) btn.classList.toggle(CLASSES.FAV_ACTIVE, isFav)
     }
   })
@@ -1295,13 +1331,13 @@ export function updateAllFavIcons() {
 // PARALLAX
 // ═══════════════════════════════════════
 
-export function setupParallax() {
+export function setupParallax(): void {
   const orbs = document.querySelector('.bg-orbs')
-  const handleParallax = throttle((e) => {
+  const handleParallax = throttle((e: MouseEvent) => {
     const x = (e.clientX / window.innerWidth - 0.5) * 20
     const y = (e.clientY / window.innerHeight - 0.5) * 20
     requestAnimationFrame(() => {
-      orbs.style.transform = `translate(${-x}px, ${-y}px)`
+      if (orbs) (orbs as HTMLElement).style.transform = `translate(${-x}px, ${-y}px)`
     })
   }, 16)
 

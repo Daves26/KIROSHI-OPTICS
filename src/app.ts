@@ -2,26 +2,25 @@
 // KIROSHI OPTICS — Main Entry Point
 // ═══════════════════════════════════════
 
-import { TMDB_TOKEN, SOURCES, ROW_OBSERVER_MARGIN } from './constants.js'
+/// <reference types="vite/client" />
+
+import type { ViewName, ViewRefs, DomRefs } from './types.js'
+import { SOURCES, ROW_OBSERVER_MARGIN } from './constants.js'
 import { validateToken, clearCache } from './api.js'
-import { state, getActiveSource, setActiveSource, getAutoPlay, setAutoPlay } from './state.js'
+import { state, getActiveSource, setActiveSource } from './state.js'
 import { initRouter, showView } from './router.js'
 import {
   initPlayer,
   playEpisode,
-  playMovie,
   playAnime,
   changeSource,
   prevEpisode,
   nextEpisode,
-  checkAutoPlay,
 } from './player.js'
 import {
   initViews,
-  setLoading,
   loadHomeRows,
   setupSearch,
-  searchAnime,
   openFavs,
   goHome,
   openDetail,
@@ -33,6 +32,35 @@ import {
   refreshContinueWatchingRow,
 } from './views.js'
 import { showToast } from './toast.js'
+import { getCacheStats } from './memo.js'
+
+// ═══════════════════════════════════════
+// SERVICE WORKER REGISTRATION
+// ═══════════════════════════════════════
+function registerServiceWorker(): void {
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js', { type: 'module' })
+        .then((registration) => {
+          console.log('[App] SW registered:', registration.scope)
+          
+          // Listen for updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing
+            newWorker?.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showToast('New version available! Refresh to update.', 'info')
+              }
+            })
+          })
+        })
+        .catch((error) => {
+          console.log('[App] SW registration failed:', error)
+        })
+    })
+  }
+}
 
 // Suppress View Transitions AbortError (harmless, occurs during rapid navigation)
 window.addEventListener('unhandledrejection', (e) => {
@@ -56,40 +84,39 @@ if (!validateToken()) {
 }
 
 // ── DOM refs ──────────────────────────
-const views = {
-  home: document.getElementById('homeView'),
-  detail: document.getElementById('detailView'),
-  episodes: document.getElementById('episodesView'),
-  player: document.getElementById('playerView'),
-  favs: document.getElementById('favsView'),
+const views: ViewRefs = {
+  home: document.getElementById('homeView')!,
+  detail: document.getElementById('detailView')!,
+  episodes: document.getElementById('episodesView')!,
+  player: document.getElementById('playerView')!,
+  favs: document.getElementById('favsView')!,
 }
 
-const domRefs = {
-  homeRows: document.getElementById('homeRows'),
+const domRefs: DomRefs = {
+  homeRows: document.getElementById('homeRows')!,
   heroText: document.querySelector('.hero-text'),
-  searchInput: document.getElementById('searchInput'),
-  clearBtn: document.getElementById('clearBtn'),
-  searchResults: document.getElementById('searchResults'),
-  resultsGrid: document.getElementById('resultsGrid'),
-  resultsTitle: document.getElementById('resultsTitle'),
-  resultsCount: document.getElementById('resultsCount'),
-  loadMore: document.getElementById('loadMore'),
-  loadMoreBtn: document.getElementById('loadMoreBtn'),
-  loader: document.getElementById('loader'),
-  favsGrid: document.getElementById('favsGrid'),
-  detailTitle: document.getElementById('detailTitle'),
-  detailType: document.getElementById('detailType'),
-  detailContent: document.getElementById('detailContent'),
-  episodesTitle: document.getElementById('episodesTitle'),
-  episodesContent: document.getElementById('episodesContent'),
-  playerTitle: document.getElementById('playerTitle'),
-  playerFrame: document.getElementById('playerFrame'),
-  prevEpBtn: document.getElementById('prevEp'),
-  nextEpBtn: document.getElementById('nextEp'),
-  serverSelect: document.getElementById('serverSelect'),
+  searchInput: document.getElementById('searchInput')! as HTMLInputElement,
+  clearBtn: document.getElementById('clearBtn')!,
+  searchResults: document.getElementById('searchResults')!,
+  resultsGrid: document.getElementById('resultsGrid')!,
+  resultsTitle: document.getElementById('resultsTitle')!,
+  resultsCount: document.getElementById('resultsCount')!,
+  loadMore: document.getElementById('loadMore')!,
+  loadMoreBtn: document.getElementById('loadMoreBtn')!,
+  loader: document.getElementById('loader')!,
+  favsGrid: document.getElementById('favsGrid')!,
+  detailTitle: document.getElementById('detailTitle')!,
+  detailType: document.getElementById('detailType')!,
+  detailContent: document.getElementById('detailContent')!,
+  episodesTitle: document.getElementById('episodesTitle')!,
+  episodesContent: document.getElementById('episodesContent')!,
+  playerTitle: document.getElementById('playerTitle')!,
+  playerFrame: document.getElementById('playerFrame')! as HTMLIFrameElement,
+  prevEpBtn: document.getElementById('prevEp')! as HTMLButtonElement,
+  nextEpBtn: document.getElementById('nextEp')! as HTMLButtonElement,
+  serverSelect: document.getElementById('serverSelect')! as HTMLSelectElement,
   nextSourceBtn: null, // Removed
-  playerBackText: document.getElementById('playerBackText'),
-  autoPlayToggle: null, // injected below
+  playerBackText: document.getElementById('playerBackText')!,
 }
 
 // ── Initialize router ─────────────────
@@ -99,7 +126,7 @@ initRouter(views)
 const rowObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
-      const row = entry.target
+      const row = entry.target as HTMLElement & { _loadRowData?: () => Promise<void>; _loaded?: boolean }
       const loadFn = row._loadRowData
       if (loadFn && !row._loaded) {
         row._loaded = true
@@ -113,76 +140,86 @@ const rowObserver = new IntersectionObserver((entries) => {
 // ── Initialize views ──────────────────
 initViews(domRefs, {
   rowObserver,
-  onShowView: (name) => showView(name, () => { domRefs.playerFrame.src = '' }),
+  onShowView: (name: ViewName) => showView(name, () => { domRefs.playerFrame.src = '' }),
   onGoHome: goHome,
   onOpenDetail: openDetail,
   onOpenSeason: openSeason,
   onOpenAnime: openAnime,
-  onOpenAnimeEpisode: (idx, title) => playAnime(idx, title),
-  onOpenAnimeEpisodes: (title) => openAnimeEpisodes(title),
-  onLoadMore: (idx, title) => playEpisode(idx, title),
+  onOpenAnimeEpisode: (idx: number, title: string) => playAnime(idx, title),
+  onOpenAnimeEpisodes: (title: string) => openAnimeEpisodes(title),
+  onLoadMore: (idx: number, title: string) => playEpisode(idx, title),
 })
 
 // ── Setup source selector ─────────────
-function populateSourceDropdown(showAnimeOnly = false) {
+function populateSourceDropdown(showAnimeOnly: boolean = false): void {
   domRefs.serverSelect.innerHTML = ''
   const activeSourceKey = getActiveSource()
+  
   Object.entries(SOURCES).forEach(([key, src]) => {
     // Filter: if showAnimeOnly, only show sources with getAnime
     if (showAnimeOnly && !src.getAnime) return
+    
     const opt = document.createElement('option')
     opt.value = key
     opt.textContent = src.name
-    if (key === activeSourceKey) opt.selected = true
+    
+    // Select the active source
+    if (key === activeSourceKey) {
+      opt.selected = true
+    }
+    
     domRefs.serverSelect.appendChild(opt)
   })
+  
+  // If no option is selected (source was filtered out), select first available
+  if (!domRefs.serverSelect.value) {
+    const firstOption = domRefs.serverSelect.querySelector('option')
+    if (firstOption) {
+      firstOption.selected = true
+      setActiveSource(firstOption.value)
+    }
+  }
 }
 
 // Initial population (show all sources)
 populateSourceDropdown(false)
 
 // Export for use when content type changes
+declare global {
+  interface Window {
+    _populateSourceDropdown: (showAnimeOnly: boolean) => void
+    KIROSHI: {
+      state: typeof state
+      clearCache: typeof clearCache
+      showView: typeof showView
+    }
+  }
+}
+
 window._populateSourceDropdown = populateSourceDropdown
 
-domRefs.serverSelect.addEventListener('change', (e) => changeSource(e.target.value))
-
-// ── Build auto-play toggle ────────────
-const playerFooter = document.querySelector('.player-footer')
-const autoPlayWrap = document.createElement('div')
-autoPlayWrap.className = 'autoplay-wrap'
-autoPlayWrap.innerHTML = `
-  <label class="autoplay-label">
-    <span>Auto-play</span>
-    <input type="checkbox" id="autoPlayToggle" ${getAutoPlay() ? 'checked' : ''} />
-    <span class="toggle-slider"></span>
-  </label>
-`
-playerFooter.appendChild(autoPlayWrap)
-domRefs.autoPlayToggle = document.getElementById('autoPlayToggle')
-domRefs.autoPlayToggle.addEventListener('change', (e) => {
-  setAutoPlay(e.target.checked)
-  showToast(e.target.checked ? 'Auto-play enabled: next episode plays automatically' : 'Auto-play disabled', 'info')
-})
-
-// ── Helper to show/hide auto-play toggle ──
-function setAutoPlayVisible(visible) {
-  autoPlayWrap.style.display = visible ? '' : 'none'
-}
+domRefs.serverSelect.addEventListener('change', (e: Event) => changeSource((e.target as HTMLSelectElement).value))
 
 // ── Initialize player ─────────────────
 initPlayer({
   ...domRefs,
-  onShowView: (name) => showView(name, () => { domRefs.playerFrame.src = '' }),
-  setAutoPlayVisible,
+  onShowView: (name: ViewName) => showView(name, () => { domRefs.playerFrame.src = '' }),
 })
 
 // ── Navigation buttons ────────────────
-document.getElementById('logoBtn').addEventListener('click', () => { goHome(); showView('home') })
-document.getElementById('favsBtn').addEventListener('click', openFavs)
-document.getElementById('backToHomeFavs').addEventListener('click', () => { goHome(); showView('home') })
-document.getElementById('backToHome').addEventListener('click', () => showView('home'))
-document.getElementById('backToSeasons').addEventListener('click', () => showView('detail'))
-document.getElementById('backToEpisodes').addEventListener('click', () => {
+document.getElementById('logoBtn')!.addEventListener('click', () => { 
+  goHome()
+  domRefs.playerFrame.src = ''  // Stop video when going home
+  showView('home') 
+})
+document.getElementById('favsBtn')!.addEventListener('click', openFavs)
+document.getElementById('backToHomeFavs')!.addEventListener('click', () => { goHome(); showView('home') })
+document.getElementById('backToHome')!.addEventListener('click', () => {
+  domRefs.playerFrame.src = ''  // Stop video when going home
+  showView('home')
+})
+document.getElementById('backToSeasons')!.addEventListener('click', () => showView('detail'))
+document.getElementById('backToEpisodes')!.addEventListener('click', () => {
   // Anime: go back to detail (episodes are in detail view)
   if (state.currentAnimeId) {
     showView('detail')
@@ -197,16 +234,14 @@ document.getElementById('backToEpisodes').addEventListener('click', () => {
 domRefs.prevEpBtn.addEventListener('click', prevEpisode)
 domRefs.nextEpBtn.addEventListener('click', () => {
   nextEpisode()
-  // Check auto-play if at end
-  setTimeout(() => checkAutoPlay(), 500)
 })
 
 // ── Mobile navigation ─────────────────
-const mobileNavHome = document.getElementById('mobileNavHome')
-const mobileNavSearch = document.getElementById('mobileNavSearch')
-const mobileNavFavs = document.getElementById('mobileNavFavs')
+const mobileNavHome = document.getElementById('mobileNavHome')!
+const mobileNavSearch = document.getElementById('mobileNavSearch')!
+const mobileNavFavs = document.getElementById('mobileNavFavs')!
 
-function updateMobileNavActive(activeBtn) {
+function updateMobileNavActive(activeBtn: HTMLElement | null): void {
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => btn.classList.remove('active'))
   if (activeBtn) activeBtn.classList.add('active')
 }
@@ -241,9 +276,9 @@ window.addEventListener('storage', () => {
 // KEYBOARD SHORTCUTS
 // ═══════════════════════════════════════
 
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', (e: KeyboardEvent) => {
   // Don't trigger shortcuts when typing in search
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) {
     if (e.key === 'Escape') {
       e.target.blur()
     }
@@ -255,7 +290,7 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault()
       if (views.player.classList.contains('active')) {
         // Back to episodes/detail
-        document.getElementById('backToEpisodes').click()
+        document.getElementById('backToEpisodes')!.click()
       } else if (views.episodes.classList.contains('active')) {
         showView('detail')
       } else if (views.detail.classList.contains('active')) {
@@ -277,16 +312,13 @@ document.addEventListener('keydown', (e) => {
       if (views.player.classList.contains('active')) {
         e.preventDefault()
         nextEpisode()
-        setTimeout(() => checkAutoPlay(), 500)
       }
       break
 
     case ' ':
-      // Space doesn't control embed (cross-origin), but we could toggle auto-play
+      // Toggle mute on iframe (not possible cross-origin)
       if (views.player.classList.contains('active')) {
         e.preventDefault()
-        domRefs.autoPlayToggle.checked = !domRefs.autoPlayToggle.checked
-        setAutoPlay(domRefs.autoPlayToggle.checked)
       }
       break
 
@@ -312,7 +344,7 @@ document.addEventListener('keydown', (e) => {
 // DEEP LINKING (Hash-based routing)
 // ═══════════════════════════════════════
 
-function handleRoute() {
+function handleRoute(): void {
   const hash = window.location.hash.slice(1)
   if (!hash) return
 
@@ -356,6 +388,9 @@ if (window.location.hash) {
 // BOOT
 // ═══════════════════════════════════════
 
+// Register service worker for production
+registerServiceWorker()
+
 // Setup search
 setupSearch()
 
@@ -365,7 +400,57 @@ loadHomeRows()
 // Setup parallax
 setupParallax()
 
-// ── Expose for dev/debug ──────────────
+// ── Performance Monitoring (DEV only) ─
 if (import.meta.env.DEV) {
-  window.KIROSHI = { state, clearCache, showView }
+  window.KIROSHI = {
+    state,
+    clearCache,
+    showView,
+    getCacheStats,
+  } as any
+  
+  // Log cache stats periodically
+  setInterval(() => {
+    const stats = getCacheStats()
+    console.log('[Performance] Cache stats:', stats)
+  }, 30000) // Every 30 seconds
+  
+  // Report Core Web Vitals
+  if ('PerformanceObserver' in window) {
+    try {
+      // Largest Contentful Paint
+      const lcp = new PerformanceObserver((list) => {
+        const entries = list.getEntries()
+        const last = entries[entries.length - 1]
+        if (last) {
+          console.log('[Web Vitals] LCP:', last.startTime.toFixed(0), 'ms')
+        }
+      })
+      lcp.observe({ entryTypes: ['largest-contentful-paint'] })
+      
+      // First Input Delay
+      const fid = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const fidEntry = entry as any
+          console.log('[Web Vitals] FID:', fidEntry.processingStart.toFixed(0), 'ms')
+        }
+      })
+      fid.observe({ entryTypes: ['first-input'] })
+      
+      // Cumulative Layout Shift
+      let clsValue = 0
+      const cls = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const clsEntry = entry as any
+          if (!clsEntry.hadRecentInput) {
+            clsValue += clsEntry.value
+            console.log('[Web Vitals] CLS:', clsValue.toFixed(3))
+          }
+        }
+      })
+      cls.observe({ entryTypes: ['layout-shift'] })
+    } catch (e) {
+      console.log('[Performance] PerformanceObserver not fully supported')
+    }
+  }
 }
