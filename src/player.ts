@@ -14,6 +14,7 @@ let playerTitle: HTMLElement
 let prevEpBtn: HTMLButtonElement
 let nextEpBtn: HTMLButtonElement
 let playerBackText: HTMLElement
+let serverSelect: HTMLSelectElement
 let onShowView: (name: ViewName, onPlayerExit?: () => void) => void
 
 export interface PlayerDom {
@@ -22,6 +23,7 @@ export interface PlayerDom {
   prevEpBtn: HTMLButtonElement
   nextEpBtn: HTMLButtonElement
   playerBackText: HTMLElement
+  serverSelect: HTMLSelectElement
   onShowView: (name: ViewName, onPlayerExit?: () => void) => void
 }
 
@@ -31,7 +33,22 @@ export function initPlayer(dom: PlayerDom): void {
   prevEpBtn = dom.prevEpBtn
   nextEpBtn = dom.nextEpBtn
   playerBackText = dom.playerBackText
+  serverSelect = dom.serverSelect
   onShowView = dom.onShowView
+}
+
+/**
+ * Sync the server select dropdown to reflect the currently active source
+ */
+function syncServerSelect(): void {
+  try {
+    const activeSource = getActiveSource()
+    if (serverSelect && serverSelect.querySelector(`option[value="${activeSource}"]`)) {
+      serverSelect.value = activeSource
+    }
+  } catch {
+    // Ignore if serverSelect is not available
+  }
 }
 
 // ── Play Episode ──────────────────────
@@ -63,11 +80,12 @@ export function playEpisode(idx: number, title: string | null = null): void {
 
   const epTitle = title ?? state._currentTitle ?? 'Unknown'
   playerTitle.textContent = `T${state.currentSeason} E${ep.episode_number} – ${ep.name}`
-  
+
   // Clear iframe before loading new source
   playerFrame.src = ''
   setTimeout(() => {
     playerFrame.src = url
+    onShowView('player')
   }, 100)
 
   // Show episode navigation
@@ -193,11 +211,12 @@ export function playAnime(idx: number, title: string | null = null): void {
 
   const epTitle = title ?? state._currentAnimeTitle ?? 'Unknown'
   playerTitle.textContent = `Episode ${epNum}`
-  
+
   // Clear iframe before loading
   playerFrame.src = ''
   setTimeout(() => {
     playerFrame.src = url
+    onShowView('player')
   }, 100)
 
   // Show episode navigation
@@ -254,7 +273,7 @@ export function changeSource(newKey: string): void {
   
   // Clear iframe immediately to stop audio
   playerFrame.src = ''
-  
+
   // Build URL directly based on current content type
   let url: string | null = null
   
@@ -284,7 +303,10 @@ export function changeSource(newKey: string): void {
   setTimeout(() => {
     playerFrame.src = url!
   }, 100)
-  
+
+  // Sync dropdown to reflect the new source
+  syncServerSelect()
+
   showToast(`Switched to ${source.name}`, 'info')
 }
 
@@ -351,7 +373,10 @@ export function tryNextSource(): void {
       setTimeout(() => {
         playerFrame.src = url!
       }, 100)
-      
+
+      // Sync dropdown to reflect the new source
+      syncServerSelect()
+
       showToast(`Switched to ${source.name}`, 'info')
       return
     }

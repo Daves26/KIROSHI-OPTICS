@@ -21,6 +21,8 @@ import { state, getFavorites, isFavorite, toggleFavorite, removeFromFavorites, g
 import { playMovie } from './player.js'
 import { showToast } from './toast.js'
 import { setDetailTitle, updateJsonLd, setEpisodesTitle } from './router.js'
+import { posterPlaceholderStyle, setupImageCrossfade } from './posterPlaceholder.js'
+import { createSearchVirtualScroller } from './virtualScroller.js'
 
 // DOM references (injected by main)
 let dom: Partial<DomRefs> = {}
@@ -218,6 +220,7 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
   ;(card as any).dataset.mediaType = (item as any).media_type
 
   const fav = isFavorite((item as any).id)
+  const itemId = (item as any).id
 
   card.innerHTML = `
     <button class="${CLASSES.FAV_BTN} ${fav ? CLASSES.FAV_ACTIVE : ''}" aria-label="Favorite">
@@ -225,7 +228,7 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
       </svg>
     </button>
-    <div class="result-poster">
+    <div class="result-poster" ${poster ? '' : `style="${posterPlaceholderStyle(itemId)}"`}>
       ${poster
       ? `<img src="${poster}" alt="${escHtml(title)}" loading="lazy" />`
       : `<div class="no-poster">🎬</div>`}
@@ -265,6 +268,15 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
       const img = card.querySelector<HTMLImageElement>('img')
       if (img && img.src) prefetchImage(img.src)
     }, { passive: true })
+  }
+
+  // Crossfade: placeholder → image
+  if (poster) {
+    const posterEl = card.querySelector('.result-poster') as HTMLElement
+    const img = card.querySelector<HTMLImageElement>('img')
+    if (posterEl && img) {
+      setupImageCrossfade(posterEl, img)
+    }
   }
 
   return card
@@ -735,9 +747,15 @@ async function doSearch(query: string, page: number = 1, append: boolean = false
 
     // Combine and deduplicate (TMDB first, then anime)
     const allItems = deduplicateSearchResults(tmdbItems, animeItems)
-    allItems.forEach(item => {
-      dom.resultsGrid!.appendChild(buildResultCard(item, true))
-    })
+
+    // PERFORMANCE: Use virtual scroller for large result sets (>60 items)
+    if (allItems.length > 60) {
+      createSearchVirtualScroller(dom.resultsGrid!, allItems, buildResultCard)
+    } else {
+      allItems.forEach(item => {
+        dom.resultsGrid!.appendChild(buildResultCard(item, true))
+      })
+    }
 
     // Show load more if either source has more
     const tmdbHasMore = tmdbResult.status === 'fulfilled' && tmdbResult.value.total_pages > page

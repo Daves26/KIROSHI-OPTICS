@@ -33,6 +33,8 @@ import {
 } from './views.js'
 import { showToast } from './toast.js'
 import { getCacheStats } from './memo.js'
+import { initErrorHandlers } from './errorHandler.js'
+import { initCleanup, registerObserver } from './cleanup.js'
 
 // ═══════════════════════════════════════
 // RATE LIMIT COUNTDOWN UI
@@ -151,6 +153,9 @@ const rowObserver = new IntersectionObserver((entries) => {
   })
 }, { rootMargin: ROW_OBSERVER_MARGIN })
 
+// Register for cleanup
+registerObserver(rowObserver)
+
 // ── Initialize views ──────────────────
 initViews(domRefs, {
   rowObserver,
@@ -226,7 +231,33 @@ document.getElementById('logoBtn')!.addEventListener('click', () => {
   domRefs.playerFrame.src = ''  // Stop video when going home
   showView('home') 
 })
-document.getElementById('favsBtn')!.addEventListener('click', openFavs)
+// ── Watchlist toggle ──────────────────
+let previousViewBeforeFavs: ViewName | null = null
+let previousScrollPos: number = 0
+
+document.getElementById('favsBtn')!.addEventListener('click', () => {
+  if (views.favs.classList.contains('active')) {
+    // Close watchlist — return to previous view
+    if (previousViewBeforeFavs === 'home') {
+      showView('home')
+      window.scrollTo({ top: previousScrollPos, behavior: 'instant' as ScrollBehavior })
+    } else if (previousViewBeforeFavs) {
+      showView(previousViewBeforeFavs)
+    } else {
+      showView('home')
+    }
+    previousViewBeforeFavs = null
+  } else {
+    // Open watchlist — save current state
+    previousScrollPos = window.scrollY
+    const currentView = Object.entries(views).find(([, el]) =>
+      el.classList.contains('active')
+    )?.[0] as ViewName | undefined
+    previousViewBeforeFavs = currentView === 'favs' ? 'home' : (currentView ?? 'home')
+    openFavs()
+  }
+})
+
 document.getElementById('backToHomeFavs')!.addEventListener('click', () => { goHome(); showView('home') })
 document.getElementById('backToHome')!.addEventListener('click', () => {
   domRefs.playerFrame.src = ''  // Stop video when going home
@@ -260,6 +291,43 @@ function updateMobileNavActive(activeBtn: HTMLElement | null): void {
   if (activeBtn) activeBtn.classList.add('active')
 }
 
+// ═══════════════════════════════════════
+// THEME TOGGLE
+// ═══════════════════════════════════════
+const THEME_KEY = 'kiroshi_theme'
+
+function getPreferredTheme(): 'dark' | 'light' {
+  const stored = localStorage.getItem(THEME_KEY)
+  if (stored === 'light' || stored === 'dark') return stored
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
+
+function applyTheme(theme: 'dark' | 'light'): void {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light')
+  } else {
+    document.documentElement.removeAttribute('data-theme')
+  }
+  localStorage.setItem(THEME_KEY, theme)
+}
+
+// Apply theme on boot
+applyTheme(getPreferredTheme())
+
+// Theme toggle button
+document.getElementById('themeToggle')?.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
+  const next = current === 'light' ? 'dark' : 'light'
+  applyTheme(next)
+})
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+  if (!localStorage.getItem(THEME_KEY)) {
+    applyTheme(e.matches ? 'light' : 'dark')
+  }
+})
+
 mobileNavHome.addEventListener('click', () => {
   updateMobileNavActive(mobileNavHome)
   goHome()
@@ -274,7 +342,8 @@ mobileNavSearch.addEventListener('click', () => {
 
 mobileNavFavs.addEventListener('click', () => {
   updateMobileNavActive(mobileNavFavs)
-  openFavs()
+  // Trigger the same toggle as the main favsBtn
+  document.getElementById('favsBtn')!.click()
 })
 
 // ── Storage listener for fav sync ─────
@@ -401,6 +470,12 @@ if (window.location.hash) {
 // ═══════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════
+
+// Initialize global error handlers
+initErrorHandlers()
+
+// Initialize cleanup listeners
+initCleanup()
 
 // Register service worker for production
 registerServiceWorker()
