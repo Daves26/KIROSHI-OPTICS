@@ -35,6 +35,20 @@ import { showToast } from './toast.js'
 import { getCacheStats } from './memo.js'
 
 // ═══════════════════════════════════════
+// RATE LIMIT COUNTDOWN UI
+// ═══════════════════════════════════════
+window.addEventListener('ratelimit', ((e: Event) => {
+  const detail = (e as CustomEvent).detail as { waitMs: number; retries: number; source: string }
+  const seconds = Math.ceil(detail.waitMs / 1000)
+  const sourceName = detail.source === 'anilist' ? 'AniList' : 'TMDB'
+  showToast(
+    `⏳ ${sourceName} rate limited. Retrying in ${seconds}s… (attempt ${detail.retries + 1})`,
+    'warning',
+    Math.max(seconds * 1000 + 500, 5000) // show long enough to cover the wait
+  )
+}) as EventListener)
+
+// ═══════════════════════════════════════
 // SERVICE WORKER REGISTRATION
 // ═══════════════════════════════════════
 function registerServiceWorker(): void {

@@ -15,8 +15,70 @@ import type {
 
 const ANILIST_API: string = 'https://graphql.anilist.co'
 
+// ═══════════════════════════════════════
+// GraphQL Fragments — DRY for all queries
+// ═══════════════════════════════════════
+
+/**
+ * Core media fields reused across all queries.
+ * Keeps queries DRY and easier to maintain.
+ */
+const MEDIA_FRAGMENT: string = `
+  fragment MediaFields on Media {
+    id
+    title {
+      romaji
+      english
+      native
+    }
+    coverImage {
+      large
+      medium
+    }
+    bannerImage
+    episodes
+    season
+    seasonYear
+    format
+    status
+    averageScore
+    genres
+    description
+    isAdult
+  }
+`
+
+/**
+ * Lightweight fields for list/grid queries (trending, popular, top rated).
+ * Excludes heavy fields like description to reduce payload.
+ */
+const MEDIA_LIST_FRAGMENT: string = `
+  fragment MediaListFields on Media {
+    id
+    title {
+      romaji
+      english
+      native
+    }
+    coverImage {
+      large
+      medium
+    }
+    bannerImage
+    episodes
+    season
+    seasonYear
+    format
+    status
+    averageScore
+    genres
+    description
+  }
+`
+
 // GraphQL queries
 const SEARCH_QUERY: string = `
+${MEDIA_FRAGMENT}
 query ($search: String, $page: Int, $perPage: Int, $sort: [MediaSort]) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
@@ -26,116 +88,46 @@ query ($search: String, $page: Int, $perPage: Int, $sort: [MediaSort]) {
       hasNextPage
     }
     media(search: $search, type: ANIME, sort: $sort, isAdult: false) {
-      id
-      title {
-        romaji
-        english
-        native
-      }
-      coverImage {
-        large
-        medium
-      }
-      bannerImage
-      episodes
-      season
-      seasonYear
-      format
-      status
-      averageScore
-      genres
-      description
-      isAdult
+      ...MediaFields
     }
   }
 }`
 
 const TRENDING_QUERY: string = `
+${MEDIA_LIST_FRAGMENT}
 query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
       total
     }
     media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
-      id
-      title {
-        romaji
-        english
-        native
-      }
-      coverImage {
-        large
-        medium
-      }
-      bannerImage
-      episodes
-      season
-      seasonYear
-      format
-      status
-      averageScore
-      genres
-      description
+      ...MediaListFields
     }
   }
 }`
 
 const POPULAR_QUERY: string = `
+${MEDIA_LIST_FRAGMENT}
 query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
       total
     }
     media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
-      id
-      title {
-        romaji
-        english
-        native
-      }
-      coverImage {
-        large
-        medium
-      }
-      bannerImage
-      episodes
-      season
-      seasonYear
-      format
-      status
-      averageScore
-      genres
-      description
+      ...MediaListFields
     }
   }
 }`
 
 const TOP_RATED_QUERY: string = `
+${MEDIA_LIST_FRAGMENT}
 query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
       total
     }
     media(type: ANIME, sort: SCORE_DESC, isAdult: false) {
-      id
-      title {
-        romaji
-        english
-        native
-      }
-      coverImage {
-        large
-        medium
-      }
-      bannerImage
-      episodes
-      season
-      seasonYear
-      format
-      status
-      averageScore
-      genres
-      description
+      ...MediaListFields
     }
   }
 }`
@@ -249,6 +241,19 @@ interface GraphQLResponse<T = unknown> {
   errors?: Array<{ message: string; locations?: Array<{ line: number; column: number }> }>
 }
 
+/**
+ * Custom error that carries retry-after information
+ */
+export class RateLimitError extends Error {
+  public readonly retryAfterMs: number
+
+  constructor(retryAfterMs: number) {
+    super(`Rate limited. Retry after ${retryAfterMs}ms`)
+    this.name = 'RateLimitError'
+    this.retryAfterMs = retryAfterMs
+  }
+}
+
 async function anilistQuery<T = unknown>(
   query: string,
   variables: Record<string, unknown> = {},
@@ -271,8 +276,23 @@ async function anilistQuery<T = unknown>(
 
     if (!res.ok) {
       if (res.status === 429 && retries < MAX_RETRIES) {
-        // Rate limited - retry with delay
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (retries + 1)))
+        // Parse Retry-After header (seconds or HTTP-date)
+        const retryAfter = res.headers.get('Retry-After')
+        let waitMs = RETRY_DELAY_MS * (retries + 1) // fallback
+
+        if (retryAfter) {
+          const seconds = parseInt(retryAfter, 10)
+          if (!isNaN(seconds)) {
+            waitMs = seconds * 1000
+          }
+        }
+
+        // Emit rate-limit event so UI can show countdown
+        window.dispatchEvent(new CustomEvent('ratelimit', {
+          detail: { waitMs, retries, source: 'anilist' }
+        }))
+
+        await new Promise(r => setTimeout(r, waitMs))
         return anilistQuery<T>(query, variables, retries + 1)
       }
       throw new Error(`AniList API error: ${res.status}`)

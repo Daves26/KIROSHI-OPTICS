@@ -78,6 +78,26 @@ async function tmdbWithRetry<T = any>(
       throw new Error('TMDB_401: Invalid or expired token')
     }
     if (res.status === 429) {
+      // Parse Retry-After header
+      const retryAfter = res.headers.get('Retry-After')
+      let waitMs = RETRY_DELAY_MS * (retries + 1)
+
+      if (retryAfter) {
+        const seconds = parseInt(retryAfter, 10)
+        if (!isNaN(seconds)) {
+          waitMs = seconds * 1000
+        }
+      }
+
+      // Emit rate-limit event for UI
+      window.dispatchEvent(new CustomEvent('ratelimit', {
+        detail: { waitMs, retries, source: 'tmdb' }
+      }))
+
+      if (retries < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, waitMs))
+        return tmdbWithRetry<T>(path, params, retries + 1)
+      }
       throw new Error('TMDB_429: Rate limit exceeded. Try again later.')
     }
     if (retries < MAX_RETRIES) {

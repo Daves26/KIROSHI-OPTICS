@@ -11,6 +11,7 @@ const DYNAMIC_CACHE = 'kiroshi-dynamic-v1'
 const APP_SHELL = [
   '/',
   '/index.html',
+  '/manifest.json',
 ]
 
 // Static asset patterns to cache-first
@@ -22,8 +23,10 @@ const STATIC_PATTERNS = [
   /\.jpg$/,
   /\.jpeg$/,
   /\.gif$/,
+  /\.webp$/,
   /\.woff2?$/,
   /\.ttf$/,
+  /manifest\.json$/,
   /fonts\.googleapis\.com/,
   /fonts\.gstatic\.com/,
 ]
@@ -112,25 +115,29 @@ function isApiRequest(request: Request): boolean {
  */
 async function cacheFirst(request: Request, cacheName: string): Promise<Response> {
   const cached = await caches.match(request)
-  
+
   if (cached) {
     console.log('[SW] Cache hit:', request.url)
     return cached
   }
-  
+
   try {
     console.log('[SW] Fetching and caching:', request.url)
     const response = await fetch(request)
-    
+
     if (response.ok) {
       const cache = await caches.open(cacheName)
       await cache.put(request, response.clone())
     }
-    
+
     return response
   } catch (error) {
     console.error('[SW] Fetch failed:', error)
-    return new Response('Offline', { 
+    // Return offline page for navigation requests
+    if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+      return caches.match('/offline.html') || new Response('Offline', { status: 503 })
+    }
+    return new Response('Offline', {
       status: 503,
       statusText: 'Service Unavailable'
     })
@@ -145,22 +152,30 @@ async function networkFirst(request: Request, cacheName: string): Promise<Respon
   try {
     console.log('[SW] Network first:', request.url)
     const response = await fetch(request)
-    
+
     if (response.ok) {
       // Cache successful responses
       const cache = await caches.open(cacheName)
       await cache.put(request, response.clone())
     }
-    
+
     return response
   } catch (error) {
     console.log('[SW] Network failed, trying cache:', request.url)
     const cached = await caches.match(request)
-    
+
     if (cached) {
       return cached
     }
-    
+
+    // For HTML requests, return offline page
+    if (request.headers.get('accept')?.includes('text/html')) {
+      return caches.match('/offline.html') || new Response(JSON.stringify({ error: 'Offline' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     return new Response(JSON.stringify({ error: 'Offline' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' }

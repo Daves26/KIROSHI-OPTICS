@@ -75,6 +75,69 @@ export function throttle<T extends (...args: any[]) => any>(fn: T, limit: number
 }
 
 // ═══════════════════════════════════════
+// SEARCH DEDUPLICATION
+// ═══════════════════════════════════════
+
+/**
+ * Normalize a title for comparison: lowercase, strip punctuation/parentheses.
+ */
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, '')  // strip punctuation
+    .replace(/\s+/g, ' ')               // collapse whitespace
+    .trim()
+}
+
+/**
+ * Merge TMDB and AniList search results, removing duplicates.
+ * Strategy:
+ *  1. Normalize titles and build a Map keyed by normalized title.
+ *  2. Prefer items with a poster over items without.
+ *  3. Prefer TMDB items for movies/series, AniList for anime.
+ */
+function deduplicateSearchResults(
+  tmdbItems: any[],
+  animeItems: any[]
+): any[] {
+  const seen = new Map<string, any>()
+
+  // Helper: decide which item to keep
+  function shouldKeep(existing: any, candidate: any): boolean {
+    // Prefer items with a poster
+    const hasPoster = (item: any) => item.poster_path || item.backdrop_path || item.posterUrl
+    if (!hasPoster(existing) && hasPoster(candidate)) return true
+    if (hasPoster(existing) && !hasPoster(candidate)) return false
+
+    // Prefer TMDB for movies/series, AniList for anime
+    if (candidate.media_type === 'anime' && existing.media_type !== 'anime') return false
+    if (candidate.media_type !== 'anime' && existing.media_type === 'anime') return true
+
+    // Default: keep existing
+    return false
+  }
+
+  // Add TMDB items first
+  for (const item of tmdbItems) {
+    const key = normalizeTitle(item.title || item.name || '')
+    if (key) seen.set(key, item)
+  }
+
+  // Merge AniList items
+  for (const item of animeItems) {
+    const key = normalizeTitle(item.title || '')
+    if (!key) continue
+
+    const existing = seen.get(key)
+    if (!existing || shouldKeep(existing, item)) {
+      seen.set(key, item)
+    }
+  }
+
+  return Array.from(seen.values())
+}
+
+// ═══════════════════════════════════════
 // LOADER
 // ═══════════════════════════════════════
 
@@ -670,8 +733,8 @@ async function doSearch(query: string, page: number = 1, append: boolean = false
       dom.resultsCount!.textContent = `${totalResults.toLocaleString()} results`
     }
 
-    // Combine and render results (TMDB first, then anime)
-    const allItems = [...tmdbItems, ...animeItems]
+    // Combine and deduplicate (TMDB first, then anime)
+    const allItems = deduplicateSearchResults(tmdbItems, animeItems)
     allItems.forEach(item => {
       dom.resultsGrid!.appendChild(buildResultCard(item, true))
     })
