@@ -227,9 +227,8 @@ initPlayer({
 
 // ── Navigation buttons ────────────────
 document.getElementById('logoBtn')!.addEventListener('click', () => { 
-  goHome()
   domRefs.playerFrame.src = ''  // Stop video when going home
-  showView('home') 
+  goHome()
 })
 // ── Watchlist toggle ──────────────────
 let previousViewBeforeFavs: ViewName | null = null
@@ -258,7 +257,7 @@ document.getElementById('favsBtn')!.addEventListener('click', () => {
   }
 })
 
-document.getElementById('backToHomeFavs')!.addEventListener('click', () => { goHome(); showView('home') })
+document.getElementById('backToHomeFavs')!.addEventListener('click', () => { goHome() })
 document.getElementById('backToHome')!.addEventListener('click', () => {
   domRefs.playerFrame.src = ''  // Stop video when going home
   showView('home')
@@ -330,8 +329,8 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e
 
 mobileNavHome.addEventListener('click', () => {
   updateMobileNavActive(mobileNavHome)
+  domRefs.playerFrame.src = ''
   goHome()
-  showView('home')
 })
 
 mobileNavSearch.addEventListener('click', () => {
@@ -377,10 +376,9 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
       } else if (views.episodes.classList.contains('active')) {
         showView('detail')
       } else if (views.detail.classList.contains('active')) {
-        showView('home')
+        goHome()
       } else if (views.favs.classList.contains('active')) {
         goHome()
-        showView('home')
       }
       break
 
@@ -417,7 +415,6 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
       if (!views.home.classList.contains('active')) {
         e.preventDefault()
         goHome()
-        showView('home')
       }
       break
   }
