@@ -441,19 +441,25 @@ function handleRoute(): void {
     openAnime(Number(animeMatch[1]))
   } else if (seasonMatch) {
     const [, id, season] = seasonMatch
-    openDetail(Number(id), 'tv')
-    // Store pending season to open after detail loads (max 10s timeout)
-    let attempts = 0
-    const maxAttempts = 50 // 50 * 200ms = 10s
-    const interval = setInterval(() => {
-      attempts++
-      if (state.currentSerieId === Number(id) && state.currentSerieType === 'tv') {
-        clearInterval(interval)
-        openSeason(Number(season), 'Loading...')
-      } else if (attempts >= maxAttempts) {
-        clearInterval(interval)
+    // Use Promise-based approach: wait for detail view to be ready
+    const detailReady = new Promise<void>((resolve) => {
+      const checkState = () => {
+        if (state.currentSerieId === Number(id) && state.currentSerieType === 'tv') {
+          resolve()
+        }
       }
-    }, 200)
+      // Listen for the custom event emitted when detail loads
+      window.addEventListener('detailloaded', checkState, { once: true })
+      // Fallback: also check immediately in case it's already loaded
+      setTimeout(() => {
+        checkState()
+        // If still not resolved after a short delay, resolve anyway
+        setTimeout(resolve, 500)
+      }, 100)
+    })
+
+    openDetail(Number(id), 'tv')
+    detailReady.then(() => openSeason(Number(season), 'Loading...'))
   } else if (tvMatch) {
     openDetail(Number(tvMatch[1]), 'tv')
   } else if (movieMatch) {
@@ -497,12 +503,14 @@ if (import.meta.env.DEV) {
     showView,
     getCacheStats,
   } as any
-  
-  // Log cache stats periodically
-  setInterval(() => {
+
+  // Log cache stats periodically with cleanup
+  const statsInterval = setInterval(() => {
     const stats = getCacheStats()
     console.log('[Performance] Cache stats:', stats)
   }, 30000) // Every 30 seconds
+
+  window.addEventListener('beforeunload', () => clearInterval(statsInterval))
   
   // Report Core Web Vitals
   if ('PerformanceObserver' in window) {

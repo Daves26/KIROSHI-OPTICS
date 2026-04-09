@@ -57,6 +57,15 @@ export function escHtml(str: string = ''): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/**
+ * Get responsive poster size based on viewport width.
+ * Uses smaller images on mobile to reduce bandwidth.
+ */
+function getPosterSize(): string {
+  if (typeof window === 'undefined') return 'w342'
+  return window.innerWidth < 640 ? 'w185' : 'w342'
+}
+
 export function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
   let timer: ReturnType<typeof setTimeout> | null = null
   return (...args: Parameters<T>) => {
@@ -207,11 +216,12 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
   const posterPath = (item as any).poster_path
   const posterUrl = (item as any).posterUrl
   const backdropPath = (item as any).backdrop_path
-  
+  const posterSize = getPosterSize()
+
   const poster = isFullUrl(posterPath)
     ? posterPath
     : (posterPath
-      ? `${IMG_BASE}/w342${posterPath}`
+      ? `${IMG_BASE}/${posterSize}${posterPath}`
       : (posterUrl ? posterUrl : (backdropPath ? `${IMG_BASE}/w500${backdropPath}` : null)))
 
   const card = document.createElement('div')
@@ -299,18 +309,14 @@ export async function loadHomeRows(): Promise<void> {
     continueWatchingRow = null
   }
 
-  // Build anime rows (do NOT append yet)
-  const animeRow1 = await buildAnimeHomeRow('Trending Anime', () => getTrendingAnime(1, 20))
-  const animeRow2 = await buildAnimeHomeRow('Popular Anime', () => getPopularAnime(1, 20))
-  const animeRows = [animeRow1, animeRow2]
-
-  // Build TMDB rows and shuffle
+  // Build all rows in parallel with Promise.all
   const shuffledTmdb = shuffleArray([...HOME_ROWS])
-  const tmdbRows: HTMLElement[] = []
-  for (const rowConfig of shuffledTmdb) {
-    const row = await buildHomeRow(rowConfig.title, rowConfig.path)
-    tmdbRows.push(row)
-  }
+  const [animeRow1, animeRow2, ...tmdbRows] = await Promise.all([
+    buildAnimeHomeRow('Trending Anime', () => getTrendingAnime(1, 20)),
+    buildAnimeHomeRow('Popular Anime', () => getPopularAnime(1, 20)),
+    ...shuffledTmdb.map(r => buildHomeRow(r.title, r.path)),
+  ])
+  const animeRows = [animeRow1, animeRow2]
 
   // Combine: first 2 = TMDB rows, rest = mixed TMDB + anime
   // Strategy: pick 2 TMDB rows for top, then shuffle remaining TMDB + anime for bottom
@@ -385,9 +391,10 @@ function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLElement {
   // Handle poster: AniList returns full URLs, TMDB returns relative paths
   const isFullUrl = (p: string | null | undefined) => p && p.startsWith('http')
   const rawPoster = item.poster_path
+  const posterSize = getPosterSize()
   const poster = isFullUrl(rawPoster)
     ? rawPoster
-    : (rawPoster ? `${IMG_BASE}/w342${rawPoster}` : null)
+    : (rawPoster ? `${IMG_BASE}/${posterSize}${rawPoster}` : null)
 
   const progress = item.progress || 0
 
@@ -647,13 +654,17 @@ function setupRowNavigation(
     contentEl.scrollBy({ left: scrollAmount(), behavior: 'smooth' })
   })
 
-  const checkScroll = () => {
+  const controller = new AbortController()
+  const checkScroll = throttle(() => {
     prevBtn.style.opacity = contentEl.scrollLeft <= 10 ? '0.3' : '1'
     nextBtn.style.opacity = (contentEl.scrollLeft + contentEl.clientWidth >= contentEl.scrollWidth - 10) ? '0.3' : '1'
-  }
-  contentEl.addEventListener('scroll', checkScroll)
-  window.addEventListener('resize', checkScroll)
+  }, 100)
+  contentEl.addEventListener('scroll', checkScroll, { passive: true, signal: controller.signal })
+  window.addEventListener('resize', checkScroll, { passive: true, signal: controller.signal })
   setTimeout(checkScroll, 500)
+
+  // Store controller for potential cleanup
+  ;(contentEl as any)._navController = controller
 }
 
 // ═══════════════════════════════════════
@@ -1117,6 +1128,9 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
       showMovieDetail(mainData)
     }
     onShowView('detail')
+
+    // Emit event for deep linking (season route waiting on detail)
+    window.dispatchEvent(new CustomEvent('detailloaded', { detail: { id, type } }))
   } catch (e: any) {
     console.error(e)
     showDetailError(e)

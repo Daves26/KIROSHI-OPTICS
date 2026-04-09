@@ -72,7 +72,6 @@ const MEDIA_LIST_FRAGMENT: string = `
     status
     averageScore
     genres
-    description
   }
 `
 
@@ -475,11 +474,9 @@ function normalizeAnimeDetail(media: AniListMedia & {
   }
 }
 
-// Utility: strip HTML tags from AniList descriptions
+// Utility: strip HTML tags from AniList descriptions (regex-based, no DOM manipulation)
 function stripHtml(html: string): string {
-  const tmp = document.createElement('div')
-  tmp.innerHTML = html
-  return tmp.textContent ?? tmp.innerText ?? ''
+  return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
 
 // Clear AniList cache

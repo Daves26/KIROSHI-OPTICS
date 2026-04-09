@@ -39,11 +39,8 @@ const API_PATTERNS = [
 
 // Install event — cache app shell
 self.addEventListener('install', (event: ExtendableEvent) => {
-  console.log('[SW] Installing...')
-  
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
-      console.log('[SW] Caching app shell')
       return cache.addAll(APP_SHELL)
     }).then(() => {
       return self.skipWaiting()
@@ -53,17 +50,12 @@ self.addEventListener('install', (event: ExtendableEvent) => {
 
 // Activate event — clean old caches
 self.addEventListener('activate', (event: ExtendableEvent) => {
-  console.log('[SW] Activating...')
-  
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((name) => name !== STATIC_CACHE && name !== DYNAMIC_CACHE)
-          .map((name) => {
-            console.log('[SW] Deleting old cache:', name)
-            return caches.delete(name)
-          })
+          .map((name) => caches.delete(name))
       )
     }).then(() => {
       return self.clients.claim()
@@ -117,12 +109,10 @@ async function cacheFirst(request: Request, cacheName: string): Promise<Response
   const cached = await caches.match(request)
 
   if (cached) {
-    console.log('[SW] Cache hit:', request.url)
     return cached
   }
 
   try {
-    console.log('[SW] Fetching and caching:', request.url)
     const response = await fetch(request)
 
     if (response.ok) {
@@ -132,7 +122,6 @@ async function cacheFirst(request: Request, cacheName: string): Promise<Response
 
     return response
   } catch (error) {
-    console.error('[SW] Fetch failed:', error)
     // Return offline page for navigation requests
     if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
       return caches.match('/offline.html') || new Response('Offline', { status: 503 })
@@ -150,7 +139,6 @@ async function cacheFirst(request: Request, cacheName: string): Promise<Response
  */
 async function networkFirst(request: Request, cacheName: string): Promise<Response> {
   try {
-    console.log('[SW] Network first:', request.url)
     const response = await fetch(request)
 
     if (response.ok) {
@@ -161,7 +149,6 @@ async function networkFirst(request: Request, cacheName: string): Promise<Respon
 
     return response
   } catch (error) {
-    console.log('[SW] Network failed, trying cache:', request.url)
     const cached = await caches.match(request)
 
     if (cached) {

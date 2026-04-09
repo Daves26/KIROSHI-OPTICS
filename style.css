@@ -147,6 +147,13 @@ html {
   100% { transform: translate(20px, 20px) scale(1.1) rotate(10deg); }
 }
 
+/* ── Respect user motion preferences ── */
+@media (prefers-reduced-motion: reduce) {
+  .orb {
+    animation: none;
+  }
+}
+
 /* ── Header ── */
 .header {
   position: sticky;

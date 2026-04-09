@@ -3,6 +3,5 @@
     "allow": [
       "Bash(npm test *)"
     ]
-  },
-  "$version": 3
+  }
 }
