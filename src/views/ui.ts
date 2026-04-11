@@ -22,6 +22,71 @@ export function buildSkeletonCard(height: string = '240px'): HTMLElement {
 }
 
 // ═══════════════════════════════════════
+// DETAIL VIEW SKELETON
+// ═══════════════════════════════════════
+
+export function buildDetailSkeleton(type: 'movie' | 'tv' | 'anime' = 'movie'): HTMLElement {
+  const container = document.createElement('div')
+  container.className = 'detail-skeleton'
+
+  const posterHeight = type === 'anime' ? '360px' : '390px'
+
+  container.innerHTML = `
+    <div class="movie-detail">
+      <div class="movie-poster">
+        <div class="skeleton" style="height: ${posterHeight}; border-radius: var(--radius-sm);"></div>
+      </div>
+      <div class="movie-info">
+        <div class="skeleton" style="height: 36px; width: 70%; margin-bottom: 16px;"></div>
+        <div class="movie-meta-row">
+          <div class="skeleton meta-chip" style="height: 24px; width: 60px;"></div>
+          <div class="skeleton meta-chip" style="height: 24px; width: 80px;"></div>
+          <div class="skeleton meta-chip" style="height: 24px; width: 100px;"></div>
+        </div>
+        <div style="margin-top: 24px;">
+          <div class="skeleton" style="height: 16px; width: 100%; margin-bottom: 8px;"></div>
+          <div class="skeleton" style="height: 16px; width: 90%; margin-bottom: 8px;"></div>
+          <div class="skeleton" style="height: 16px; width: 75%;"></div>
+        </div>
+        <div class="flex gap-2" style="margin-top: 24px;">
+          <div class="skeleton" style="height: 44px; width: 140px; border-radius: var(--radius-sm);"></div>
+          <div class="skeleton" style="height: 44px; width: 140px; border-radius: var(--radius-sm);"></div>
+        </div>
+      </div>
+    </div>
+    ${type === 'tv' ? `
+    <div class="seasons-section" style="margin-top: 48px;">
+      <div class="skeleton" style="height: 24px; width: 120px; margin-bottom: 16px;"></div>
+      <div class="seasons-grid-scroll">
+        <div class="skeleton" style="height: 200px; width: 140px; display: inline-block; margin-right: 12px;"></div>
+        <div class="skeleton" style="height: 200px; width: 140px; display: inline-block; margin-right: 12px;"></div>
+        <div class="skeleton" style="height: 200px; width: 140px; display: inline-block; margin-right: 12px;"></div>
+      </div>
+    </div>
+    ` : ''}
+  `
+
+  return container
+}
+
+// ═══════════════════════════════════════
+// EPISODE SKELETON CARDS
+// ═══════════════════════════════════════
+
+export function buildEpisodeSkeleton(count: number = 6): DocumentFragment {
+  const fragment = document.createDocumentFragment()
+
+  for (let i = 0; i < count; i++) {
+    const epCard = document.createElement('div')
+    epCard.className = 'episode-item skeleton'
+    epCard.style.height = '80px'
+    fragment.appendChild(epCard)
+  }
+
+  return fragment
+}
+
+// ═══════════════════════════════════════
 // IMAGE PREFETCHER
 // ═══════════════════════════════════════
 

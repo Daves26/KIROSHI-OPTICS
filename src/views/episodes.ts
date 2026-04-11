@@ -2,7 +2,7 @@ import { tmdb } from '../api.js'
 import { state } from '../state.js'
 import type { AniListDetailResponse, TmdbEpisode } from '../types.js'
 import { escHtml } from './utils.js'
-import { setLoading } from './ui.js'
+import { buildEpisodeSkeleton } from './ui.js'
 import { dom, onShowView } from './context.js'
 import { buildEpisodeItem, buildAnimeEpisodeItem } from './components.js'
 import { setEpisodesTitle } from '../router.js'
@@ -21,7 +21,13 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
   dom.episodesTitle!.textContent = `${escHtml(title)} · All Episodes`
   setEpisodesTitle(title, 1)
 
+  // Show skeleton while processing
   const totalEpisodes = data.episodes ?? 0
+  dom.episodesContent!.innerHTML = ''
+  dom.episodesContent!.appendChild(buildEpisodeSkeleton(Math.min(totalEpisodes, 8)))
+  dom.episodesContent!.classList.add('loading')
+  onShowView('episodes')
+
   const airingSchedule = data.airingSchedule || []
   const now = Math.floor(Date.now() / 1000)
 
@@ -38,6 +44,8 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
   }
   state.currentAnimeEpisodes = episodeList as any
 
+  // Replace skeleton with real content
+  dom.episodesContent!.classList.remove('loading')
   dom.episodesContent!.innerHTML = ''
   if (episodeList.length === 0) {
     dom.episodesContent!.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:48px 0">No episodes available yet. Check back later!</p>'
@@ -46,8 +54,6 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
       dom.episodesContent!.appendChild(buildAnimeEpisodeItem(ep, idx, data))
     })
   }
-
-  onShowView('episodes')
 }
 
 // ═══════════════════════════════════════
@@ -55,7 +61,6 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
 // ═══════════════════════════════════════
 
 export async function openSeason(seasonNum: number, serieName: string): Promise<void> {
-  setLoading(true)
   state.currentSeason = seasonNum
   dom.episodesTitle!.textContent = `${escHtml(serieName)} · Season ${seasonNum}`
 
@@ -65,21 +70,26 @@ export async function openSeason(seasonNum: number, serieName: string): Promise<
 
   setEpisodesTitle(serieName, seasonNum)
 
+  // Show skeleton while loading
+  dom.episodesContent!.innerHTML = ''
+  dom.episodesContent!.appendChild(buildEpisodeSkeleton(6))
+  dom.episodesContent!.classList.add('loading')
+  onShowView('episodes')
+
   try {
     const data = await tmdb<any>(`/tv/${state.currentSerieId}/season/${seasonNum}`)
     const episodes = data.episodes || []
     state.currentEpisodes = episodes
 
+    // Replace skeleton with real content
+    dom.episodesContent!.classList.remove('loading')
     dom.episodesContent!.innerHTML = ''
     episodes.forEach((ep: TmdbEpisode, idx: number) => {
       dom.episodesContent!.appendChild(buildEpisodeItem(ep, idx))
     })
-
-    onShowView('episodes')
   } catch (e: any) {
     console.error(e)
+    dom.episodesContent!.classList.remove('loading')
     dom.episodesContent!.innerHTML = '<p style="color:var(--accent);padding:24px">Failed to load episodes.</p>'
-  } finally {
-    setLoading(false)
   }
 }

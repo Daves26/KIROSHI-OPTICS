@@ -4,7 +4,7 @@ import { getAnimeDetail } from '../anilist.js'
 import { state, isFavorite, toggleFavorite } from '../state.js'
 import type { MediaType, TmdbDetailResponse, AniListDetailResponse, MediaItem, TmdbMedia } from '../types.js'
 import { escHtml } from './utils.js'
-import { setLoading } from './ui.js'
+import { buildDetailSkeleton } from './ui.js'
 import { dom, onShowView, onOpenAnimeEpisodes, onOpenAnimeEpisode, onOpenSeason } from './context.js'
 import { buildResultCard } from './components.js'
 import { playMovie } from '../player.js'
@@ -16,17 +16,25 @@ import { setDetailTitle, updateJsonLd } from '../router.js'
 // ═══════════════════════════════════════
 
 export async function openAnime(id: number): Promise<void> {
-  setLoading(true)
   state.currentAnimeId = id
   state.currentSerieId = null
   state.currentSerieType = null
   state.currentEpisodes = []
   state.currentEpIndex = null
 
+  // Show skeleton while loading
+  dom.detailContent!.innerHTML = ''
+  dom.detailContent!.appendChild(buildDetailSkeleton('anime'))
+  dom.detailContent!.classList.add('loading')
+  onShowView('detail')
+
   try {
     const data = await getAnimeDetail(id)
+
+    // Fade out skeleton, then show real content
+    await new Promise(resolve => setTimeout(resolve, 150))
+    dom.detailContent!.classList.remove('loading')
     showAnimeDetail(data)
-    onShowView('detail')
 
     if (state.pendingAnimeResume) {
       const { episodeIndex, title } = state.pendingAnimeResume
@@ -40,9 +48,8 @@ export async function openAnime(id: number): Promise<void> {
     }
   } catch (e: any) {
     console.error(e)
+    dom.detailContent!.classList.remove('loading')
     showDetailError(e)
-  } finally {
-    setLoading(false)
   }
 }
 
@@ -123,13 +130,19 @@ export function showAnimeDetail(data: AniListDetailResponse): void {
 // ═══════════════════════════════════════
 
 export async function openDetail(id: number, type: MediaType): Promise<void> {
-  setLoading(true)
   state.currentSerieId = id
   state.currentSerieType = type === 'anime' ? null : type
   state.currentAnimeId = null
   state.currentAnimeEpisodes = []
   state.currentAnimeEpIndex = null
   state._currentAnimeData = undefined
+
+  // Show skeleton while loading
+  const skeletonType = type === 'tv' ? 'tv' as const : 'movie' as const
+  dom.detailContent!.innerHTML = ''
+  dom.detailContent!.appendChild(buildDetailSkeleton(skeletonType))
+  dom.detailContent!.classList.add('loading')
+  onShowView('detail')
 
   try {
     const [mainData, castData, similarData] = await Promise.all([
@@ -141,19 +154,21 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
     state._castData = castData.cast?.slice(0, 12) || []
     state._similarData = similarData.results || []
 
+    // Fade out skeleton, then show real content
+    await new Promise(resolve => setTimeout(resolve, 150))
+    dom.detailContent!.classList.remove('loading')
+
     if (type === 'tv') {
       showSeriesDetail(mainData)
     } else {
       showMovieDetail(mainData)
     }
-    onShowView('detail')
 
     window.dispatchEvent(new CustomEvent('detailloaded', { detail: { id, type } }))
   } catch (e: any) {
     console.error(e)
+    dom.detailContent!.classList.remove('loading')
     showDetailError(e)
-  } finally {
-    setLoading(false)
   }
 }
 

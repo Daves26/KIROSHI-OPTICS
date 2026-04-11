@@ -1015,10 +1015,42 @@ html {
   background-size: 200% 100%;
   animation: pulse 1.5s infinite;
   border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+.skeleton * {
+  visibility: hidden;
 }
 @keyframes pulse {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ── Episode Skeleton ── */
+.episode-item.skeleton {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background: linear-gradient(90deg, var(--glass-bg) 25%, var(--glass-bg-deep) 50%, var(--glass-bg) 75%);
+  background-size: 200% 100%;
+  animation: pulse 1.5s infinite;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+
+/* ── Detail Skeleton Fade Transition ── */
+.detail-content {
+  transition: opacity 0.2s ease-in-out;
+}
+.detail-content.loading {
+  opacity: 0.6;
+}
+
+.episodes-content {
+  transition: opacity 0.2s ease-in-out;
+}
+.episodes-content.loading {
+  opacity: 0.6;
 }
 
 /* ── View Transitions (Global) ── */
