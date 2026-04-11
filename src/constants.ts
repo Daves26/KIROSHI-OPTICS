@@ -26,6 +26,11 @@ export const SKELETON_COUNT_SEARCH: number = 6
 // VIDEO SOURCES
 // ═══════════════════════════════════════
 export const SOURCES: SourcesMap = {
+  '111movies': {
+    name: '111Movies',
+    getMovie: (id: number | string): string => `https://111movies.net/movie/${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://111movies.net/tv/${id}/${s}/${e}`
+  },
   videasy: {
     name: 'VidEasy',
     getMovie: (id: number | string): string => `https://player.videasy.net/movie/${id}`,
@@ -46,11 +51,6 @@ export const SOURCES: SourcesMap = {
     name: 'VidRock',
     getMovie: (id: number | string): string => `https://vidrock.net/movie/${id}`,
     getTv: (id: number | string, s: number, e: number): string => `https://vidrock.net/tv/${id}-${s}-${e}`
-  },
-  '111movies': {
-    name: '111Movies',
-    getMovie: (id: number | string): string => `https://111movies.com/movie/${id}`,
-    getTv: (id: number | string, s: number, e: number): string => `https://111movies.com/tv/${id}-${s}-${e}`
   },
   vidnest: {
     name: 'VidNest',
@@ -77,10 +77,46 @@ export const SOURCES: SourcesMap = {
     name: 'RiveStream',
     getMovie: (id: number | string): string => `https://rivestream.org/embed?type=movie&id=${id}`,
     getTv: (id: number | string, s: number, e: number): string => `https://rivestream.org/embed?type=tv&id=${id}&season=${s}&episode=${e}`
+  },
+  cinezo: {
+    name: 'Cinezo',
+    getMovie: (id: number | string): string => `https://api.cinezo.net/movie/${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://api.cinezo.net/tv/${id}/${s}/${e}`
+  },
+  vidcore: {
+    name: 'VidCore',
+    getMovie: (id: number | string): string => `https://vidcore.net/movie/${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://vidcore.net/tv/${id}/${s}/${e}`
+  },
+  vidfast: {
+    name: 'VidFast',
+    getMovie: (id: number | string): string => `https://vidfast.pro/movie/${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://vidfast.pro/tv/${id}/${s}/${e}`
+  },
+  vidking: {
+    name: 'VidKing',
+    getMovie: (id: number | string): string => `https://www.vidking.net/embed/movie/${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://www.vidking.net/embed/tv/${id}/${s}/${e}`,
+    getAnime: (id: number | string, episode: number = 1): string => `https://www.vidking.net/embed/anime/${id}/${episode}`
+  },
+  vidlinkpro: {
+    name: 'VidLink Pro',
+    getMovie: (id: number | string): string => `https://vidlink.pro/movie/${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://vidlink.pro/tv/${id}/${s}/${e}`
+  },
+  'vsembed.su': {
+    name: 'Vsembed.su',
+    getMovie: (id: number | string): string => `https://vsembed.su/embed/movie?tmdb=${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://vsembed.su/embed/tv?tmdb=${id}&season=${s}&episode=${e}`
+  },
+  'vidsrc-embed.ru': {
+    name: 'VidSrc-Embed.ru',
+    getMovie: (id: number | string): string => `https://vidsrc-embed.ru/embed/movie?tmdb=${id}`,
+    getTv: (id: number | string, s: number, e: number): string => `https://vidsrc-embed.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}`
   }
 } as const
 
-export const DEFAULT_SOURCE: SourceKey = 'videasy'
+export const DEFAULT_SOURCE: SourceKey = '111movies'
 
 // ═══════════════════════════════════════
 // LOCAL STORAGE KEYS
