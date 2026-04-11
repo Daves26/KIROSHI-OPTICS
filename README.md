@@ -24,14 +24,18 @@
 - ❤️ **Watchlist** — Save your favorite movies, series, and anime to a personal watchlist
 - ⏯️ **Continue Watching** — Track your progress and resume where you left off
 - 🎨 **Liquid Glass UI** — Beautiful glassmorphic design with smooth animations
+- 🌓 **Theme Toggle** — Switch between dark and light themes
 - 📱 **Responsive** — Works on desktop, tablet, and mobile with adaptive layouts
 - 🔧 **Source Switching** — Switch video sources on the fly if one isn't working
 - ⌨️ **Keyboard Shortcuts** — Navigate the app with keyboard shortcuts (`/` search, `Esc` back, `←` `→` episodes)
 - 🌙 **Dark by Default** — Sleek dark theme with ambient background orbs
 - ♿ **Accessible** — ARIA labels, skip-to-content link, focus management
 - 📡 **Offline-Ready** — Service Worker with intelligent caching strategies
-- 🚀 **Performance** — Lazy-loaded rows via IntersectionObserver, image prefetching, memoized renders
+- 🚀 **Performance** — Lazy-loaded rows via IntersectionObserver, image prefetching, memoized renders, virtual scrolling, code splitting
 - 🧪 **Type-Safe** — Full TypeScript with strict mode enabled
+- 🧪 **Tested** — Unit tests for core functionality (API, state, memoization)
+- ⚡ **Error Handling** — Comprehensive error handling and reporting system
+- 🔄 **Code Splitting** — Lazy-loaded chunks for optimal performance
 
 ## 🛠 Tech Stack
 
@@ -39,10 +43,10 @@
 |----------|-----------|
 | **Build Tool** | [Vite 8](https://vitejs.dev/) |
 | **Language** | [TypeScript 6](https://www.typescriptlang.org/) |
+| **Testing** | [Vitest](https://vitest.dev/) + [@testing-library/dom](https://testing-library.com/) + [happy-dom](https://github.com/capricorn86/happy-dom) |
 | **APIs** | [TMDB API](https://www.themoviedb.org/documentation/api), [AniList GraphQL](https://anilist.gitbook.io/anilist/apiv2/) |
 | **Video Sources** | VidEasy, MoviesAPI, VidSrc, VidRock, 111Movies, VidNest, VidLink, RiveStream, and more |
-| **Caching** | localStorage + Service Worker (Cache API) |
-| **Testing** | [Vitest](https://vitest.dev/) + [@testing-library/dom](https://testing-library.com/) + [happy-dom](https://github.com/capricorn86/happy-dom) |
+| **Caching** | localStorage + Service Worker (Cache API) + Web Workers |
 | **Deployment** | [Vercel](https://vercel.com/) |
 
 ## 📦 Setup
@@ -100,20 +104,39 @@ KIROSHI-OPTICS/
 ├── src/
 │   ├── app.ts              # Main entry point, bootstraps the app
 │   ├── api.ts              # TMDB API layer with caching & retry
+│   ├── api.test.ts         # Tests for API layer
 │   ├── anilist.ts          # AniList GraphQL queries & normalization
-│   ├── views.ts            # DOM rendering & view logic
+│   ├── views/              # Modular view components
+│   │   ├── index.ts        # View exports aggregator
+│   │   ├── home.ts         # Home view with lazy-loaded rows
+│   │   ├── search.ts       # Search view with debounced queries
+│   │   ├── detail.ts       # Movie/Series/Anime detail view
+│   │   ├── episodes.ts     # Episode list view
+│   │   ├── favorites.ts    # Watchlist view
+│   │   ├── components.ts   # Reusable UI components
+│   │   ├── context.ts      # View context and state
+│   │   ├── ui.ts           # UI utilities and helpers
+│   │   └── utils.ts        # Utility functions
+│   ├── views.ts            # Legacy view system (backward compatibility)
 │   ├── player.ts           # Video player & source management
 │   ├── router.ts           # View transitions & navigation
 │   ├── state.ts            # App state + localStorage persistence
+│   ├── state.test.ts       # Tests for state management
 │   ├── constants.ts        # Configuration constants & video sources
 │   ├── memo.ts             # LRU memoization for expensive renders
+│   ├── memo.test.ts        # Tests for memoization
 │   ├── toast.ts            # Toast notification system
 │   ├── sw.ts               # Service Worker (cache strategies)
 │   ├── cacheManager.ts     # Web Worker cache manager
 │   ├── cache.worker.ts     # Cache worker for off-thread operations
 │   ├── virtualScroller.ts  # Virtual scrolling for large lists
+│   ├── cleanup.ts          # Resource cleanup utilities
+│   ├── errorHandler.ts     # Error handling & reporting
+│   ├── posterPlaceholder.ts # Poster placeholder generation
+│   ├── videoLinks.json     # Video source configuration
 │   └── types.ts            # TypeScript type definitions
-├── public/                  # Static assets
+├── public/                  # Static assets (manifest, icons, etc.)
+├── docs/                    # Additional documentation
 ├── index.html               # Main HTML with SEO & structured data
 ├── style.css                # Liquid Glass UI styles
 ├── vitest.config.ts         # Vitest configuration

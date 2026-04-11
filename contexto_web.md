@@ -28,6 +28,10 @@
 |------------|-----|---------|
 | **TypeScript** | Language | 6.0+ |
 | **Vite** | Build tool & dev server | 8.0+ |
+| **Vitest** | Testing framework | 4.1+ |
+| **Testing Library** | DOM testing utilities | 10.4+ |
+| **Happy-DOM** | DOM environment for tests | 20.8+ |
+| **Terser** | JavaScript minifier | 5.46+ |
 | **Vanilla JS/TS** | No framework | ES2020+ |
 | **CSS3** | Styling (no Tailwind) | Custom |
 | **HTML5** | Markup | Semantic |
@@ -39,23 +43,42 @@ KIROSHI-OPTICS/
 ├── style.css               # Estilos globales (~1700 líneas)
 ├── vite.config.ts          # Configuración de Vite
 ├── tsconfig.json           # Configuración de TypeScript
+├── vitest.config.ts        # Configuración de Vitest
 ├── package.json            # Dependencias
-├── PERFORMANCE.md          # Documentación de performance
 │
 ├── src/
 │   ├── app.ts              # Entry point principal
 │   ├── types.ts            # Tipos e interfaces TypeScript
 │   ├── constants.ts        # Constantes y configuración
+│   ├── videoLinks.json     # Configuración de fuentes de video
 │   │
 │   ├── api.ts              # Capa de API TMDB con caching
+│   ├── api.test.ts         # Tests para API
 │   ├── anilist.ts          # Capa de API AniList (GraphQL)
 │   ├── state.ts            # Estado global + localStorage
+│   ├── state.test.ts       # Tests para estado
 │   ├── router.ts           # Sistema de routing y vistas
 │   ├── player.ts           # Lógica del reproductor
-│   ├── views.ts            # Renderizado de UI (~1350 líneas)
 │   ├── toast.ts            # Sistema de notificaciones
+│   ├── errorHandler.ts     # Manejo de errores
+│   ├── cleanup.ts          # Limpieza de recursos
+│   ├── posterPlaceholder.ts # Generación de placeholders
 │   │
+│   ├── views/              # Vistas modularizadas
+│   │   ├── index.ts        # Exportador de vistas
+│   │   ├── home.ts         # Vista principal con lazy loading
+│   │   ├── search.ts       # Búsqueda con debounce
+│   │   ├── detail.ts       # Detalle de película/serie/anime
+│   │   ├── episodes.ts     # Lista de episodios
+│   │   ├── favorites.ts    # Watchlist
+│   │   ├── components.ts   # Componentes reutilizables
+│   │   ├── context.ts      # Contexto de vistas
+│   │   ├── ui.ts           # Utilidades de UI
+│   │   └── utils.ts        # Funciones auxiliares
+│   │
+│   ├── views.ts            # Vista legacy (compatibilidad)
 │   ├── memo.ts             # Memoization de renders
+│   ├── memo.test.ts        # Tests para memoization
 │   ├── virtualScroller.ts  # Virtual scrolling
 │   ├── cacheManager.ts     # Manager para Web Worker cache
 │   ├── cache.worker.ts     # Web Worker para cache
@@ -328,9 +351,77 @@ type ToastType = 'success' | 'info' | 'warning' | 'error'
 
 ---
 
+### 10. **`views/`** — Modular View System
+**Responsabilidad**: UI rendering dividido en módulos especializados
+
+**Estructura**:
+- `index.ts` — Exporta todas las vistas y funciones principales
+- `home.ts` — Carga y renderizado del home con lazy loading
+- `search.ts` — Búsqueda con debounce y paginación
+- `detail.ts` — Detalle de películas, series y anime
+- `episodes.ts` — Lista y navegación de episodios
+- `favorites.ts` — Gestión de watchlist
+- `components.ts` — Componentes reutilizables (cards, skeletons, etc.)
+- `context.ts` — Contexto y estado local de vistas
+- `ui.ts` — Utilidades de UI (parallax, icons, etc.)
+- `utils.ts` — Funciones auxiliares
+
+**Beneficio**: Código más mantenible y testeable
+
+---
+
+### 11. **`errorHandler.ts`** — Manejo de Errores
+**Responsabilidad**: Captura y reporte de errores
+
+**Funciones**:
+- Manejo centralizado de errores
+- Logging estructurado
+- Recovery strategies
+
+---
+
+### 12. **`cleanup.ts`** — Limpieza de Recursos
+**Responsabilidad**: Prevenir memory leaks
+
+**Funciones**:
+- Cleanup de event listeners
+- Cleanup de intervals/timeouts
+- Cleanup de observers
+
+---
+
+### 13. **`posterPlaceholder.ts`** — Placeholders
+**Responsabilidad**: Generar placeholders para posters sin imagen
+
+---
+
+## 🧪 Testing
+
+### Configuración
+- **Framework**: Vitest 4.1+
+- **Environment**: happy-dom
+- **Assertions**: Vitest expect API
+- **DOM Testing**: @testing-library/dom 10.4+
+
+### Archivos de Test
+```typescript
+api.test.ts         // Tests para capa de API TMDB
+state.test.ts       // Tests para gestión de estado
+memo.test.ts        // Tests para memoization
+```
+
+### Comandos
+```bash
+npm test            // Ejecutar tests en modo watch
+npm run test:run    // Ejecutar tests una vez
+npm run test:coverage  // Ejecutar con cobertura de código
+```
+
+---
+
 ## 🚀 Performance Features
 
-### 11. **`memo.ts`** — Memoization
+### 14. **`memo.ts`** — Memoization
 **Propósito**: Cache de renders costosos
 
 **Funciones**:
@@ -344,7 +435,7 @@ type ToastType = 'success' | 'info' | 'warning' | 'error'
 
 ---
 
-### 12. **`virtualScroller.ts`** — Virtual Scrolling
+### 15. **`virtualScroller.ts`** — Virtual Scrolling
 **Propósito**: Solo renderizar items visibles
 
 **Clase principal**:
@@ -364,7 +455,7 @@ class VirtualScroller<T> {
 
 ---
 
-### 13. **`cache.worker.ts`** — Web Worker
+### 16. **`cache.worker.ts`** — Web Worker
 **Propósito**: Offload de localStorage a background thread
 
 **Operaciones**:
@@ -374,7 +465,7 @@ class VirtualScroller<T> {
 
 ---
 
-### 14. **`cacheManager.ts`** — Cache Manager
+### 17. **`cacheManager.ts`** — Cache Manager
 **Propósito**: Interface async con el worker
 
 **Funciones**:
@@ -390,7 +481,7 @@ cacheManager.destroy(): void
 
 ---
 
-### 15. **`sw.ts`** — Service Worker
+### 18. **`sw.ts`** — Service Worker
 **Propósito**: Cache de assets estáticos
 
 **Strategies**:
@@ -659,24 +750,31 @@ npx tsc --noEmit     # Verificar tipos
 | Archivo | Líneas |
 |---------|--------|
 | `views.ts` | ~1350 |
+| `views/` (directory) | ~1500 (combined) |
 | `types.ts` | ~470 |
 | `constants.ts` | ~140 |
 | `player.ts` | ~270 |
 | `anilist.ts` | ~470 |
 | `app.ts` | ~470 |
 | `api.ts` | ~100 |
+| `api.test.ts` | ~50 |
 | `state.ts` | ~120 |
+| `state.test.ts` | ~50 |
 | `router.ts` | ~175 |
 | `memo.ts` | ~180 |
+| `memo.test.ts` | ~50 |
 | `cacheManager.ts` | ~200 |
 | `virtualScroller.ts` | ~160 |
 | `toast.ts` | ~115 |
 | `sw.ts` | ~210 |
 | `cache.worker.ts` | ~115 |
+| `errorHandler.ts` | ~100 |
+| `cleanup.ts` | ~80 |
+| `posterPlaceholder.ts` | ~100 |
 | `style.css` | ~1700 |
 | `index.html` | ~260 |
 
-**Total**: ~6300 líneas de código
+**Total**: ~8000+ líneas de código (incluyendo tests y nuevos módulos)
 
 ### Build Output (Producción)
 ```
@@ -719,15 +817,21 @@ index-[hash].js:            54.86 kB │ gzip: 14.88 kB
 - Memoization
 - Virtual Scrolling
 - Code Splitting
+- Unit tests (API, state, memoization)
+- Modular view architecture
+- Error handling system
+- Resource cleanup utilities
+- Theme toggle (dark/light)
+- Poster placeholders
 
 ### 🔄 Para Integrar (opcional)
 - Virtual scrolling en search results
 - Web Worker en api.ts
 - Memoization en buildResultCard
 - HTTPS para dev (testear SW)
+- Más cobertura de tests
 
 ### 🚫 No Implementado
-- Tests unitarios
 - CI/CD pipeline
 - Analytics
 - Backend propio
@@ -758,11 +862,13 @@ Cuando trabajes con este proyecto, ten en cuenta:
 1. **No hay framework** — Es vanilla TS con Vite
 2. **Todo es síncrono** excepto APIs (async/await)
 3. **Estado global** en `state.ts` (no hay Redux ni similar)
-4. **DOM manipulation** directa en `views.ts`
+4. **DOM manipulation** directa en `views/` directory
 5. **TypeScript strict mode** está activado
 6. **Performance es prioridad** — el proyecto ya está optimizado
 7. **Service Worker** solo funciona en producción (import.meta.env.PROD)
-8. **Los imports deben ser explícitos** con `.js` (Vite requirement)
+8. **Los imports deben ser explícitos** con extensión (Vite requirement)
+9. **Tests** usan Vitest + Testing Library
+10. **Vistas modularizadas** en `src/views/` directory
 
 ### Patrones Comunes
 ```typescript
@@ -780,6 +886,23 @@ state.currentSerieId = id
 
 // Custom events para sync
 window.dispatchEvent(new Event('storage'))
+
+// Error handling
+try {
+  await someAsyncOperation()
+} catch (error) {
+  handleError(error, 'context')
+}
+
+// Testing patterns
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/dom'
+
+describe('Module', () => {
+  it('should do something', () => {
+    // test implementation
+  })
+})
 ```
 
 ### Anti-patrones a Evitar
@@ -788,6 +911,9 @@ window.dispatchEvent(new Event('storage'))
 - ❌ No bloquear main thread con localStorage (usar cacheManager)
 - ❌ No crear más de 3 toasts simultáneos
 - ❌ No renderizar +200 items sin virtual scrolling
+- ❌ No olvidar cleanup de event listeners
+- ❌ No saltar tests en nuevas funcionalidades
+- ❌ No ignorar errores en operaciones async
 
 ---
 
