@@ -480,6 +480,18 @@ initErrorHandlers()
 // Initialize cleanup listeners
 initCleanup()
 
+// Apple-style header scroll shadow
+const headerEl = document.querySelector('.header')!
+const handleHeaderScroll = () => {
+  if (window.scrollY > 64) {
+    headerEl.classList.add('scrolled')
+  } else {
+    headerEl.classList.remove('scrolled')
+  }
+}
+window.addEventListener('scroll', handleHeaderScroll, { passive: true })
+handleHeaderScroll() // Check initial state
+
 // Register service worker for production
 registerServiceWorker()
 
