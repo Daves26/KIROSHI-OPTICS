@@ -7,10 +7,39 @@ import { buildSkeletonCard } from './ui.js'
 import { dom, onShowView } from './context.js'
 import { buildResultCard } from './components.js'
 import { createSearchVirtualScroller } from '../virtualScroller.js'
+import type { ViewName } from '../types.js'
 
 // ═══════════════════════════════════════
 // SEARCH DEDUPLICATION
 // ═══════════════════════════════════════
+
+// Track the view that was active before search started
+let previousViewBeforeSearch: ViewName | null = null
+let previousScrollPosBeforeSearch: number = 0
+let searchTrackingActive = false
+let viewSavedForCurrentSearch = false
+
+/**
+ * Set the view to restore when search is cancelled
+ */
+export function setPreviousViewBeforeSearch(view: ViewName | null, scrollPos: number = 0): void {
+  previousViewBeforeSearch = view
+  previousScrollPosBeforeSearch = scrollPos
+}
+
+/**
+ * Get the current previous view before search
+ */
+export function getPreviousViewBeforeSearch(): ViewName | null {
+  return previousViewBeforeSearch
+}
+
+/**
+ * Check if search tracking is currently active
+ */
+export function getIsSearchTrackingActive(): boolean {
+  return searchTrackingActive
+}
 
 export function deduplicateSearchResults(
   tmdbItems: any[],
@@ -51,15 +80,37 @@ export function deduplicateSearchResults(
 // SEARCH
 // ═══════════════════════════════════════
 
+/**
+ * Get the current active view name
+ */
+function getCurrentView(): ViewName {
+  // Check which view is currently active
+  const views = ['home', 'detail', 'episodes', 'player', 'favs'] as ViewName[]
+  for (const view of views) {
+    const el = document.getElementById(view === 'home' ? 'homeView' : view === 'detail' ? 'detailView' : view === 'episodes' ? 'episodesView' : view === 'player' ? 'playerView' : 'favsView')
+    if (el && el.classList.contains('active')) {
+      return view
+    }
+  }
+  return 'home'
+}
+
 export function setupSearch(): void {
   let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
   const handleInput = debounce((q: string) => {
     if (!q) {
       dom.searchResults?.classList.add(CLASSES.HIDDEN)
-      dom.homeRows?.classList.remove(CLASSES.HIDDEN)
-      dom.heroText?.classList.remove(CLASSES.HIDDEN)
+      dom.resultsGrid!.innerHTML = ''
+      restorePreviousView()
       return
+    }
+    // Save view before first doSearch call for this search session
+    if (!viewSavedForCurrentSearch) {
+      searchTrackingActive = true
+      previousViewBeforeSearch = getCurrentView()
+      previousScrollPosBeforeSearch = window.scrollY
+      viewSavedForCurrentSearch = true
     }
     doSearch(q, 1)
   }, SEARCH_DEBOUNCE_MS)
@@ -72,18 +123,74 @@ export function setupSearch(): void {
   })
 
   dom.clearBtn?.addEventListener('click', () => {
-    dom.searchInput!.value = ''
-    ;(dom.clearBtn as HTMLElement).classList.remove('visible')
-    dom.searchResults?.classList.add(CLASSES.HIDDEN)
-    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
-    dom.heroText?.classList.remove(CLASSES.HIDDEN)
-    dom.resultsGrid!.innerHTML = ''
-    dom.searchInput?.focus()
+    cancelSearch()
   })
 
   dom.loadMoreBtn?.addEventListener('click', () => {
     doSearch(state.searchQuery, state.searchPage + 1, true)
   })
+}
+
+/**
+ * Restore the previously saved view after search is cancelled/cleared
+ */
+function restorePreviousView(): void {
+  const viewToRestore = previousViewBeforeSearch
+  const scrollToRestore = previousScrollPosBeforeSearch
+
+  // Reset tracking state
+  searchTrackingActive = false
+  viewSavedForCurrentSearch = false
+  previousViewBeforeSearch = null
+  previousScrollPosBeforeSearch = 0
+
+  if (viewToRestore === 'home') {
+    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+    dom.heroText?.classList.remove(CLASSES.HIDDEN)
+    window.scrollTo({ top: scrollToRestore, behavior: 'instant' as ScrollBehavior })
+  } else if (viewToRestore === 'detail' || viewToRestore === 'episodes') {
+    onShowView(viewToRestore)
+    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+    dom.heroText?.classList.remove(CLASSES.HIDDEN)
+  } else if (viewToRestore === 'favs') {
+    onShowView('favs')
+    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+    dom.heroText?.classList.remove(CLASSES.HIDDEN)
+  } else if (viewToRestore === 'player') {
+    const playerFrame = dom.playerFrame
+    if (playerFrame) playerFrame.src = ''
+    if (state.currentAnimeId) {
+      onShowView('detail')
+    } else if (state.currentSerieType === 'movie') {
+      onShowView('detail')
+    } else {
+      onShowView('episodes')
+    }
+    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+    dom.heroText?.classList.remove(CLASSES.HIDDEN)
+  } else {
+    // No previous view saved — just show home content
+    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+    dom.heroText?.classList.remove(CLASSES.HIDDEN)
+  }
+}
+
+/**
+ * Cancel search and restore previous view
+ */
+export function cancelSearch(): void {
+  dom.searchInput!.value = ''
+  ;(dom.clearBtn as HTMLElement).classList.remove('visible')
+  dom.searchResults?.classList.add(CLASSES.HIDDEN)
+  dom.resultsGrid!.innerHTML = ''
+  restorePreviousView()
+}
+
+/**
+ * Check if search is currently active (has results showing)
+ */
+export function isSearchActive(): boolean {
+  return !dom.searchResults?.classList.contains(CLASSES.HIDDEN)
 }
 
 export async function doSearch(query: string, page: number = 1, append: boolean = false): Promise<void> {

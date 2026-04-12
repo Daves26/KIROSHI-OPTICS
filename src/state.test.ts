@@ -169,7 +169,7 @@ describe('state.ts', () => {
 
   describe('Source Management', () => {
     it('returns default source initially', () => {
-      expect(getActiveSource()).toBe('videasy')
+      expect(getActiveSource()).toBe('111movies')
     })
 
     it('sets and gets active source', () => {

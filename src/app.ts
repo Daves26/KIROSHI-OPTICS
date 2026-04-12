@@ -30,6 +30,8 @@ import {
   updateAllFavIcons,
   setupParallax,
   refreshContinueWatchingRow,
+  cancelSearch,
+  getIsSearchTrackingActive,
 } from './views.js'
 import { showToast } from './toast.js'
 import { getCacheStats } from './memo.js'
@@ -359,11 +361,20 @@ window.addEventListener('storage', () => {
 // ═══════════════════════════════════════
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
-  // Don't trigger shortcuts when typing in search
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) {
-    if (e.key === 'Escape') {
-      e.target.blur()
+  // Handle Escape key in search input
+  if (e.key === 'Escape' && e.target === domRefs.searchInput) {
+    if (getIsSearchTrackingActive()) {
+      e.preventDefault()
+      cancelSearch()
+      return
     }
+    // If search is not active, just blur the input
+    e.target.blur()
+    return
+  }
+
+  // Don't trigger shortcuts when typing in other inputs
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) {
     return
   }
 
