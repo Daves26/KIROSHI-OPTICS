@@ -107,7 +107,7 @@ html {
 /* ── Ambient Background ── */
 .bg-orbs {
   position: fixed;
-  inset: 0;
+  inset: -150px;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
@@ -118,26 +118,26 @@ html {
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.7;
+  filter: blur(140px);
+  opacity: 0.6;
   animation: liquid 40s ease-in-out infinite alternate;
   will-change: transform, opacity;
 }
 
 .orb1 {
-  width: 700px; height: 700px;
-  background: radial-gradient(circle, rgba(207,102,121,0.8), transparent 70%);
-  top: -100px; left: -100px;
+  width: 900px; height: 900px;
+  background: radial-gradient(circle, rgba(207,102,121,0.85), transparent 75%);
+  top: -150px; left: -150px;
 }
 .orb2 {
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(124,77,255,0.7), transparent 70%);
-  bottom: -50px; right: -50px;
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, rgba(124,77,255,0.75), transparent 75%);
+  bottom: -100px; right: -100px;
 }
 .orb3 {
-  width: 450px; height: 450px;
-  background: radial-gradient(circle, rgba(100,140,255,0.6), transparent 70%);
-  top: 40%; left: 40%;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(100,140,255,0.65), transparent 75%);
+  top: 35%; left: 35%;
 }
 
 @keyframes liquid {
@@ -1150,7 +1150,7 @@ html {
 .home-rows {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 24px;
   max-width: 1400px;
   margin: 0 auto;
   padding-bottom: 56px;
@@ -1204,8 +1204,8 @@ html {
   display: flex;
   gap: 16px;
   overflow-x: auto;
-  padding: 20px 4px 56px;
-  margin-top: -8px;
+  padding: 16px 24px 48px;
+  margin-top: 0;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1377,8 +1377,8 @@ html {
   display: flex;
   gap: 16px;
   overflow-x: auto;
-  padding: 20px 4px 56px;
-  margin-top: -8px;
+  padding: 16px 24px 48px;
+  margin-top: 0;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1914,4 +1914,755 @@ body {
 .skip-link:focus-visible {
   top: 8px;
   outline: 2px solid #fff;
+}
+
+/* ═══════════════════════════════════════
+   NETFLIX-STYLE MOBILE REDESIGN
+   ═══════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* ── Mobile Header ── */
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: linear-gradient(180deg, rgba(8, 8, 16, 0.5) 0%, transparent 100%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
+    height: 48px;
+    padding: 0 12px;
+    transition: background 0.3s;
+  }
+  .header.scrolled {
+    background: rgba(13, 13, 26, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .header-inner {
+    gap: 0;
+    justify-content: space-between;
+  }
+  .logo span { display: none; }
+  .logo { padding: 0; }
+
+  .search-pill {
+    max-width: none;
+    background: rgba(20, 20, 20, 0.6);
+    border: none;
+    border-radius: var(--mobile-radius);
+    height: 36px;
+    padding: 0 12px;
+    margin: 0 8px;
+  }
+  .search-pill:focus-within {
+    box-shadow: none;
+    border-color: transparent;
+    background: rgba(40, 40, 40, 0.9);
+  }
+
+  .gh-link { display: none; }
+
+  .btn-glass {
+    background: transparent;
+    border: none;
+    backdrop-filter: none;
+    padding: 0 8px;
+    min-height: 36px;
+  }
+  .btn-glass:hover {
+    background: transparent;
+    transform: none;
+  }
+
+  /* ── Body & Main ── */
+  body {
+    background: var(--bg);
+  }
+  .bg-orbs { display: block; }
+  .main {
+    padding-top: 48px;
+    padding-bottom: 56px;
+    background: transparent;
+  }
+  .view {
+    padding: 0;
+    max-width: none;
+    animation: none;
+  }
+
+  /* ── Hero Banner ── */
+  .hero-text {
+    position: relative;
+    padding: 0;
+    margin: 0;
+    height: 48vh;
+    min-height: 98px;
+    max-height: 108px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background:transparent;
+    background-color: transparent;
+  }
+  .hero-text h1 {
+    font-size: clamp(1.8rem, 6vw, 2.8rem);
+    margin-bottom: 8px;
+    padding: 0 16px;
+    color: white;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .hero-text p {
+    font-size: 0.9rem;
+    color: var(--text-2);
+    padding: 0 16px;
+    max-width: 80%;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+
+  /* Hero action buttons */
+  .hero-actions {
+    display: flex;
+    gap: 10px;
+    padding: 16px;
+    margin-top: 8px;
+  }
+  .hero-actions .btn-action {
+    flex: 1;
+    height: 42px;
+    border-radius: 100px;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  /* ── Home Rows (Netflix horizontal scroll) ── */
+  .home-rows {
+    gap: 0;
+    padding: 0 0 40px;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .home-row {
+    gap: 0;
+    margin-bottom: 24px;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .home-row:last-child {
+    margin-bottom: 0;
+  }
+  .row-header {
+    padding: 0 16px;
+    margin-bottom: 4px;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .row-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .row-nav-btns { display: none; }
+  .row-content {
+    padding: 8px 0 32px 16px;
+    gap: 12px;
+    margin-top: 0;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Netflix-style cards with glass effects */
+  .row-content .result-card {
+    flex: 0 0 130px;
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+    box-shadow: 0;
+    overflow: visible;
+  }
+  .row-content .result-card::before {
+    display: block;
+  }
+  .row-content .result-card::after {
+    display: block;
+  }
+  .row-content .result-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    z-index: 10;
+    box-shadow:
+      0 32px 64px -12px rgba(0, 0, 0, 0.25),
+      0 16px 32px -8px rgba(0, 0, 0, 0.15),
+      0 4px 8px -2px rgba(0, 0, 0, 0.1),
+      0 0 0 0.5px rgba(255, 255, 255, 0.12),
+      inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  }
+  .row-content .result-card:hover::before { opacity: 1; }
+  .row-content .result-card:hover::after {
+    opacity: 0.85;
+    transform: scaleY(1) scaleX(1);
+    filter: blur(18px);
+  }
+
+  .row-content .result-poster {
+    aspect-ratio: 2/3;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    overflow: hidden;
+    background: var(--bg-2);
+  }
+  .row-content .result-poster::before {
+    display: block;
+  }
+  .row-content .result-info {
+    padding: 8px 4px 4px;
+  }
+  .row-content .result-title {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text);
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+  .row-content .result-meta { display: none; }
+  .row-content .type-pill { display: none; }
+
+  .row-content .fav-btn {
+    width: 28px;
+    height: 28px;
+    top: 4px;
+    right: 4px;
+    opacity: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+
+  /* ── Bottom Tab Bar (Netflix style with glass) ── */
+  .mobile-nav {
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: rgba(13, 13, 26, 0.7);
+    border-top: none;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+  }
+  .mobile-nav-inner {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 4px;
+  }
+  .mobile-nav-btn {
+    padding: 6px 0;
+    min-width: 56px;
+    min-height: 44px;
+    gap: 3px;
+    border-radius: var(--radius-xs);
+    transition: color 0.2s, background 0.2s;
+  }
+  .mobile-nav-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  .mobile-nav-btn span {
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .mobile-nav-btn:hover,
+  .mobile-nav-btn.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .mobile-nav-btn {
+    color: var(--text-3);
+  }
+
+  /* ── Search Results ── */
+  .search-results {
+    padding: 12px 16px 40px;
+    background: transparent;
+    min-height: calc(100vh - 48px);
+  }
+  .results-header {
+    margin-bottom: 16px;
+    padding: 0;
+  }
+  .results-header h2 {
+    font-size: 1.2rem;
+  }
+  .results-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 0 0 40px;
+    margin: 0;
+  }
+  .results-grid .result-card {
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+    box-shadow: var(--shadow-card);
+    overflow: visible;
+  }
+  .results-grid .result-card::before { display: block; }
+  .results-grid .result-card::after { display: block; }
+  .results-grid .result-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    z-index: 10;
+    box-shadow:
+      0 32px 64px -12px rgba(0, 0, 0, 0.25),
+      0 16px 32px -8px rgba(0, 0, 0, 0.15),
+      0 4px 8px -2px rgba(0, 0, 0, 0.1),
+      0 0 0 0.5px rgba(255, 255, 255, 0.12),
+      inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  }
+  .results-grid .result-card:hover::before { opacity: 1; }
+  .results-grid .result-card:hover::after {
+    opacity: 0.85;
+    transform: scaleY(1) scaleX(1);
+    filter: blur(18px);
+  }
+  .results-grid .result-poster { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .results-grid .result-poster::before { display: block; }
+  .results-grid .result-info { padding: 6px 4px 4px; }
+  .results-grid .result-title {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .results-grid .result-meta { display: none; }
+  .results-grid .type-pill { display: none; }
+  .results-grid .fav-btn {
+    opacity: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+    width: 24px;
+    height: 24px;
+    top: 4px;
+    right: 4px;
+  }
+
+  /* ── Detail Page ── */
+  .detail-header {
+    padding: 12px 16px;
+    margin-bottom: 0;
+    background: transparent;
+  }
+  .back-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    padding: 8px 12px;
+    min-height: 40px;
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+  .detail-header h2 {
+    font-size: 1.2rem;
+  }
+  .detail-content {
+    padding: 0;
+  }
+  .movie-detail {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0;
+  }
+  .movie-poster {
+    margin: 0;
+    max-width: 280px;
+    margin: 16px auto 0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-card);
+  }
+  .movie-poster img {
+    width: 100%;
+    display: block;
+  }
+  .movie-info {
+    padding: 20px 16px;
+    gap: 12px;
+  }
+  .movie-title {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  .movie-meta-row {
+    gap: 8px;
+  }
+  .meta-chip {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    color: var(--text-2);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+  .movie-overview {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-2);
+    max-width: none;
+  }
+  .flex.gap-2 {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .btn-action {
+    height: 48px;
+    border-radius: 100px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    width: 100%;
+    justify-content: center;
+  }
+  .watch-btn {
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: white;
+    border: none;
+  }
+  .fav-add-btn {
+    background: var(--glass-bg);
+    color: var(--text);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+  .fav-add-btn:hover {
+    background: var(--glass-bg-deep);
+    border-color: var(--glass-border-h);
+    transform: translateY(-2px);
+  }
+
+  /* Section subtitles */
+  .section-subtitle {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 28px 16px 12px;
+    padding: 0;
+  }
+
+  /* Cast row with glass */
+  .cast-grid {
+    grid-template-columns: none;
+    display: flex;
+    overflow-x: auto;
+    gap: 16px;
+    padding: 0 16px 16px;
+    scrollbar-width: none;
+  }
+  .cast-grid::-webkit-scrollbar { display: none; }
+  .cast-card {
+    flex: 0 0 80px;
+  }
+  .cast-card img, .cast-no-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+  }
+  .cast-name {
+    max-width: 80px;
+    font-size: 0.7rem;
+    color: var(--text-2);
+  }
+  .cast-role {
+    max-width: 80px;
+    font-size: 0.65rem;
+  }
+
+  /* Trailer section */
+  .trailer-section {
+    margin-top: 24px;
+    padding: 0 16px;
+  }
+  .trailer-embed {
+    max-width: none;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Similar row with glass */
+  .similar-row {
+    padding: 0 16px 36px;
+    margin: 0;
+  }
+  .similar-row .result-card {
+    flex: 0 0 110px;
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+    box-shadow: var(--shadow-card);
+    overflow: visible;
+  }
+  .similar-row .result-card::before { display: block; }
+  .similar-row .result-card::after { display: block; }
+  .similar-row .result-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    z-index: 10;
+    box-shadow:
+      0 32px 64px -12px rgba(0, 0, 0, 0.25),
+      0 16px 32px -8px rgba(0, 0, 0, 0.15),
+      0 4px 8px -2px rgba(0, 0, 0, 0.1),
+      0 0 0 0.5px rgba(255, 255, 255, 0.12),
+      inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  }
+  .similar-row .result-card:hover::before { opacity: 1; }
+  .similar-row .result-card:hover::after {
+    opacity: 0.85;
+    transform: scaleY(1) scaleX(1);
+    filter: blur(18px);
+  }
+  .similar-row .result-poster { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .similar-row .result-poster::before { display: block; }
+  .similar-row .result-info { padding: 6px 4px 4px; }
+  .similar-row .result-title { font-size: 0.7rem; font-weight: 500; color: var(--text); }
+  .similar-row .result-meta { display: none; }
+  .similar-row .type-pill { display: none; }
+  .similar-row .fav-btn {
+    opacity: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+
+  /* ── Episodes View ── */
+  .episodes-content {
+    padding: 0 16px 40px;
+    gap: 10px;
+  }
+  .episode-item {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+  .episode-item:hover {
+    transform: translateX(6px);
+    border-color: var(--glass-border-h);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  .ep-thumb {
+    width: 120px;
+    min-width: 120px;
+    height: 68px;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    overflow: hidden;
+  }
+  .ep-body { padding: 10px 12px; }
+  .ep-name { font-size: 0.85rem; }
+  .ep-desc { font-size: 0.72rem; }
+  .ep-num { font-size: 0.7rem; }
+  .ep-runtime { font-size: 0.7rem; }
+
+  /* ── Player View ── */
+  .player-wrap {
+    padding: 0;
+    padding-bottom: 56.25%;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+  }
+  .player-footer {
+    margin: 0;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+    flex-direction: column;
+    gap: 10px;
+  }
+  .source-selector {
+    width: 100%;
+  }
+  .select-glass {
+    flex: 1;
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    padding: 8px 32px 8px 14px;
+    font-size: 0.85rem;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .ep-nav-wrap {
+    width: 100%;
+  }
+  .ep-nav-wrap .btn-glass {
+    flex: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    min-height: 40px;
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+
+  .adblock-tip {
+    margin: 0;
+    padding: 12px 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-top: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+
+  /* ── Watchlist View ── */
+  #favsView .detail-header {
+    padding: 12px 16px;
+    background: transparent;
+  }
+  #favsGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 0 16px 40px;
+    margin: 0;
+  }
+  #favsGrid .result-card {
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+    box-shadow: var(--shadow-card);
+    overflow: visible;
+  }
+  #favsGrid .result-card::before { display: block; }
+  #favsGrid .result-card::after { display: block; }
+  #favsGrid .result-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    z-index: 10;
+    box-shadow:
+      0 32px 64px -12px rgba(0, 0, 0, 0.25),
+      0 16px 32px -8px rgba(0, 0, 0, 0.15),
+      0 4px 8px -2px rgba(0, 0, 0, 0.1),
+      0 0 0 0.5px rgba(255, 255, 255, 0.12),
+      inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  }
+  #favsGrid .result-card:hover::before { opacity: 1; }
+  #favsGrid .result-card:hover::after {
+    opacity: 0.85;
+    transform: scaleY(1) scaleX(1);
+    filter: blur(18px);
+  }
+  #favsGrid .result-poster { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  #favsGrid .result-poster::before { display: block; }
+  #favsGrid .result-info { padding: 6px 4px 4px; }
+  #favsGrid .result-title { font-size: 0.7rem; font-weight: 500; color: var(--text); }
+  #favsGrid .result-meta { display: none; }
+  #favsGrid .type-pill { display: none; }
+
+  /* Remove button always visible on mobile */
+  .remove-btn,
+  .remove-watching-btn {
+    opacity: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+
+  /* Progress bar */
+  .progress-bar { height: 3px; }
+
+  /* ── Seasons Grid ── */
+  .seasons-grid-scroll {
+    padding: 0 16px 16px;
+    gap: 12px;
+  }
+  .seasons-grid-scroll .season-card {
+    flex: 0 0 110px;
+    width: 110px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+  .season-label {
+    font-size: 0.72rem;
+  }
+
+  /* ── Load More ── */
+  .load-more {
+    padding: 16px;
+  }
+  .load-more .btn-glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    backdrop-filter: var(--blur-sm);
+    -webkit-backdrop-filter: var(--blur-sm);
+  }
+
+  /* ── Toast ── */
+  .toast-container {
+    bottom: 60px;
+    right: 12px;
+    left: 12px;
+  }
+  .toast {
+    max-width: none;
+    background: rgba(18, 18, 34, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 3px solid var(--toast-accent, var(--accent));
+    border-radius: var(--radius-sm);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    font-size: 0.82rem;
+  }
+
+  /* ── Loader ─ */
+  .loader-ring {
+    border-color: rgba(255,255,255,0.1);
+    border-top-color: var(--accent);
+  }
 }
