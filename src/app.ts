@@ -8,7 +8,7 @@ import type { ViewName, ViewRefs, DomRefs } from './types.js'
 import { SOURCES, ROW_OBSERVER_MARGIN } from './constants.js'
 import { validateToken, clearCache } from './api.js'
 import { state, getActiveSource, setActiveSource } from './state.js'
-import { initRouter, showView } from './router.js'
+import { initRouter, showView, savePlayerSrc, getLastPlayerSrc } from './router.js'
 import {
   initPlayer,
   playEpisode,
@@ -242,6 +242,9 @@ document.getElementById('favsBtn')!.addEventListener('click', () => {
     if (previousViewBeforeFavs === 'home') {
       showView('home')
       window.scrollTo({ top: previousScrollPos, behavior: 'instant' as ScrollBehavior })
+    } else if (previousViewBeforeFavs === 'player') {
+      showView('player')
+      domRefs.playerFrame.src = getLastPlayerSrc() || domRefs.playerFrame.src
     } else if (previousViewBeforeFavs) {
       showView(previousViewBeforeFavs)
     } else {
@@ -255,6 +258,9 @@ document.getElementById('favsBtn')!.addEventListener('click', () => {
       el.classList.contains('active')
     )?.[0] as ViewName | undefined
     previousViewBeforeFavs = currentView === 'favs' ? 'home' : (currentView ?? 'home')
+    if (currentView === 'player') {
+      savePlayerSrc(domRefs.playerFrame.src)
+    }
     openFavs()
   }
 })

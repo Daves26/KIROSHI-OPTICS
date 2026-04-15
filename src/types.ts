@@ -299,6 +299,8 @@ export interface AppState {
   _lastAnimeSource: string | null;
   // Currently active source
   _activeSource: string | null;
+  // Player src saved before search (to restore after cancel)
+  _playerSrcBeforeSearch: string;
 }
 
 // ── Video Source Types ─────────────────

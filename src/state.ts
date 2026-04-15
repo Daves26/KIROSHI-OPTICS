@@ -32,6 +32,7 @@ export const state: AppState = {
   _lastMovieSource: null,
   _lastAnimeSource: null,
   _activeSource: null,
+  _playerSrcBeforeSearch: '',
 }
 
 // ── Source Management ─────────────────

@@ -12,6 +12,17 @@ let views: ViewRefs = {} as ViewRefs
 let lastDetailTitle: string | null = null
 let lastEpisodesTitle: string | null = null
 
+// Track last player src to restore after watchlist/other overlays
+let lastPlayerSrc: string = ''
+
+export function savePlayerSrc(src: string): void {
+  lastPlayerSrc = src
+}
+
+export function getLastPlayerSrc(): string {
+  return lastPlayerSrc
+}
+
 export function initRouter(viewRefs: ViewRefs): void {
   views = viewRefs
 }

@@ -8,6 +8,7 @@ import { dom, onShowView } from './context.js'
 import { buildResultCard } from './components.js'
 import { createSearchVirtualScroller } from '../virtualScroller.js'
 import type { ViewName } from '../types.js'
+import { getLastPlayerSrc } from '../router.js'
 
 // ═══════════════════════════════════════
 // SEARCH DEDUPLICATION
@@ -110,6 +111,9 @@ export function setupSearch(): void {
       searchTrackingActive = true
       previousViewBeforeSearch = getCurrentView()
       previousScrollPosBeforeSearch = window.scrollY
+      if (previousViewBeforeSearch === 'player') {
+        state._playerSrcBeforeSearch = dom.playerFrame?.src || ''
+      }
       viewSavedForCurrentSearch = true
     }
     doSearch(q, 1)
@@ -157,17 +161,13 @@ function restorePreviousView(): void {
     dom.homeRows?.classList.remove(CLASSES.HIDDEN)
     dom.heroText?.classList.remove(CLASSES.HIDDEN)
   } else if (viewToRestore === 'player') {
-    const playerFrame = dom.playerFrame
-    if (playerFrame) playerFrame.src = ''
-    if (state.currentAnimeId) {
-      onShowView('detail')
-    } else if (state.currentSerieType === 'movie') {
-      onShowView('detail')
-    } else {
-      onShowView('episodes')
-    }
+    onShowView('player')
     dom.homeRows?.classList.remove(CLASSES.HIDDEN)
     dom.heroText?.classList.remove(CLASSES.HIDDEN)
+    const playerSrc = state._playerSrcBeforeSearch || getLastPlayerSrc()
+    if (playerSrc && dom.playerFrame) {
+      dom.playerFrame.src = playerSrc
+    }
   } else {
     // No previous view saved — just show home content
     dom.homeRows?.classList.remove(CLASSES.HIDDEN)
