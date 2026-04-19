@@ -242,6 +242,16 @@ document.getElementById('nextSeasonBtn')?.addEventListener('click', () => {
     }
   }
 })
+// ── Prev Season button ────────────────
+document.getElementById('prevSeasonBtn')?.addEventListener('click', () => {
+  if (state.currentSerieId && state.currentSeason !== null) {
+    const prevSeason = state.currentSeason - 1
+    if (prevSeason >= 1) {
+      const title = domRefs.episodesTitle!.textContent?.split(' · ')[0] ?? ''
+      openSeason(prevSeason, title)
+    }
+  }
+})
 
 // ── Watchlist toggle ──────────────────
 let previousViewBeforeFavs: ViewName | null = null

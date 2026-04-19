@@ -17,6 +17,7 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
 
   state.currentEpisodes = []
   state.currentEpIndex = null
+  document.getElementById('prevSeasonBtn')!.style.display = 'none'
   document.getElementById('nextSeasonBtn')!.style.display = 'none'
 
   dom.episodesTitle!.textContent = `${escHtml(title)} · All Episodes`
@@ -89,7 +90,9 @@ export async function openSeason(seasonNum: number, serieName: string): Promise<
       dom.episodesContent!.appendChild(buildEpisodeItem(ep, idx))
     })
 
+    const hasPrev = seasonNum > 1
     const hasNext = state._totalSeasons !== null && seasonNum < state._totalSeasons
+    document.getElementById('prevSeasonBtn')!.style.display = hasPrev ? 'inline-flex' : 'none'
     document.getElementById('nextSeasonBtn')!.style.display = hasNext ? 'inline-flex' : 'none'
   } catch (e: any) {
     console.error(e)

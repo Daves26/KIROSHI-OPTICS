@@ -1065,6 +1065,11 @@ html {
   flex: 1;
   min-width: 0;
 }
+.season-nav-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .detail-meta {
   display: flex;
   align-items: center;

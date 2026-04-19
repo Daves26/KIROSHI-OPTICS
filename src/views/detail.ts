@@ -162,6 +162,8 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
       showMovieDetail(mainData)
     }
 
+    dom.detailContent!.classList.remove('loading')
+
     window.dispatchEvent(new CustomEvent('detailloaded', { detail: { id, type } }))
   } catch (e: any) {
     console.error(e)
