@@ -396,7 +396,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
       return
     }
     // If search is not active, just blur the input
-    e.target.blur()
+    ;(e.target as HTMLElement).blur()
     return
   }
 

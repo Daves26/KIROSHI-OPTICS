@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+/// <reference types="vitest/globals" />
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   memoize,
   invalidateCardCache,
@@ -75,8 +76,8 @@ describe('memo.ts', () => {
 
   describe('invalidateCardCache', () => {
     it('removes entries for specific item ID', () => {
-      const builder = vi.fn((item: any) => {
-        const el = { tagName: 'DIV', dataset: { id: item.id } }
+      const builder = vi.fn((item: any, _enablePrefetch: boolean) => {
+        const el = { tagName: 'DIV', dataset: { id: item.id } } as any
         return el
       })
       const memoized = memoizedCardBuilder(builder)
@@ -94,7 +95,7 @@ describe('memo.ts', () => {
 
   describe('clearCardCache', () => {
     it('clears all card cache', () => {
-      const builder = vi.fn((item: any) => ({ tag: 'DIV' }))
+      const builder = vi.fn((_item: any, _enablePrefetch: boolean) => ({ tag: 'DIV' } as any))
       const memoized = memoizedCardBuilder(builder)
 
       memoized({ id: 1 }, false)
@@ -117,7 +118,7 @@ describe('memo.ts', () => {
 
   describe('memoizedCardBuilder', () => {
     it('caches built cards by ID', () => {
-      const buildFn = vi.fn((item: any) => {
+      const buildFn = vi.fn((item: any, _enablePrefetch: boolean) => {
         const el: any = { id: item.id, built: true }
         el.cloneNode = () => ({ ...el })
         return el
@@ -132,7 +133,7 @@ describe('memo.ts', () => {
     })
 
     it('clones cached results to prevent mutation', () => {
-      const buildFn = vi.fn((item: any) => {
+      const buildFn = vi.fn((item: any, _enablePrefetch: boolean) => {
         const el: any = { id: item.id, count: 0 }
         el.cloneNode = () => ({ ...el })
         return el
@@ -141,21 +142,21 @@ describe('memo.ts', () => {
 
       const item = { id: 10, media_type: 'tv' }
       // First call: builds and caches original
-      const card1 = memoized(item, false)
+      memoized(item, false)
       // Second call: returns a clone from cache
-      const card2 = memoized(item, false)
+      const card2 = memoized(item, false) as any
 
       // Mutate the clone from second call
       card2.count = 999
 
       // Third call should return another clone with original value
-      const card3 = memoized(item, false)
+      const card3 = memoized(item, false) as any
       expect(card3.count).toBe(0) // Original cached value not mutated
       expect(buildFn).toHaveBeenCalledTimes(1)
     })
 
     it('limits cache size to 200 entries', () => {
-      const buildFn = vi.fn((item: any) => {
+      const buildFn = vi.fn((item: any, _enablePrefetch: boolean) => {
         const el: any = { id: item.id }
         el.cloneNode = () => ({ ...el })
         return el

@@ -51,7 +51,7 @@ describe('api.ts', () => {
   describe('setCache', () => {
     it('stores data with expiration', () => {
       setCache('testkey', { id: 1, name: 'test' })
-      const stored = JSON.parse(localStorageStore['kiroshi_api_cache_testkey'])
+      const stored = JSON.parse(localStorageStore['kiroshi_api_cache_testkey']!)
       expect(stored.data).toEqual({ id: 1, name: 'test' })
       expect(stored.expires).toBeGreaterThan(Date.now())
     })

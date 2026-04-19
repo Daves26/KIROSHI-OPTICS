@@ -1,3 +1,4 @@
+/// <reference types="vitest/globals" />
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // Mock localStorage
@@ -7,8 +8,10 @@ const localStorageMock = {
   setItem: vi.fn((key: string, value: string) => { localStorageStore[key] = value }),
   removeItem: vi.fn((key: string) => { delete localStorageStore[key] }),
   clear: vi.fn(() => { Object.keys(localStorageStore).forEach(k => delete localStorageStore[k]) }),
+  key: vi.fn((index: number) => Object.keys(localStorageStore)[index] ?? null),
+  get length() { return Object.keys(localStorageStore).length },
 }
-global.localStorage = localStorageMock as Storage
+global.localStorage = localStorageMock as unknown as Storage
 
 // Mock window.dispatchEvent
 global.window = {
