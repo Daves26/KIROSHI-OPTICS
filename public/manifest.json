@@ -4,25 +4,31 @@
   "description": "A sleek movie and series streaming catalog powered by TMDB. Discover trending, top rated, and personalized picks.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0d0d1a",
-  "theme_color": "#0d0d1a",
+  "background_color": "#09090B",
+  "theme_color": "#0D9488",
   "orientation": "portrait-primary",
   "categories": ["entertainment", "video"],
   "icons": [
     {
-      "src": "/icons/icon-192.svg",
-      "sizes": "192x192",
+      "src": "/icons/kiroshi_zen_logo.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
+      "src": "/icons/kiroshi-favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192.svg",
+      "src": "/icons/kiroshi-favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/kiroshi_zen_logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
