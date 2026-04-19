@@ -33,6 +33,7 @@ export const state: AppState = {
   _lastAnimeSource: null,
   _activeSource: null,
   _playerSrcBeforeSearch: '',
+  _totalSeasons: null,
 }
 
 // ── Source Management ─────────────────

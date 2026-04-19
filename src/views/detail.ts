@@ -136,6 +136,7 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
   state.currentAnimeEpisodes = []
   state.currentAnimeEpIndex = null
   state._currentAnimeData = undefined
+  state._totalSeasons = null
 
   // Show skeleton while loading
   const skeletonType = type === 'tv' ? 'tv' as const : 'movie' as const
@@ -154,11 +155,8 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
     state._castData = castData.cast?.slice(0, 12) || []
     state._similarData = similarData.results || []
 
-    // Fade out skeleton, then show real content
-    await new Promise(resolve => setTimeout(resolve, 150))
-    dom.detailContent!.classList.remove('loading')
-
     if (type === 'tv') {
+      state._totalSeasons = (mainData as any).number_of_seasons ?? null
       showSeriesDetail(mainData)
     } else {
       showMovieDetail(mainData)
@@ -209,7 +207,7 @@ export function showSeriesDetail(data: TmdbDetailResponse): void {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M5 3l8 5-8 5V3z" fill="white"/>
             </svg>
-            Browse seasons
+            Browse episodes
           </button>
           <button class="btn-action fav-add-btn" id="favSeriesBtn">
             ${isFavorite(data.id) ? '♥ Favorited' : '♥ Add to Watchlist'}

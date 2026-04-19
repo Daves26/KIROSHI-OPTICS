@@ -301,6 +301,7 @@ export interface AppState {
   _activeSource: string | null;
   // Player src saved before search (to restore after cancel)
   _playerSrcBeforeSearch: string;
+  _totalSeasons: number | null;
 }
 
 // ── Video Source Types ─────────────────

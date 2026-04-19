@@ -17,6 +17,7 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
 
   state.currentEpisodes = []
   state.currentEpIndex = null
+  document.getElementById('nextSeasonBtn')!.style.display = 'none'
 
   dom.episodesTitle!.textContent = `${escHtml(title)} · All Episodes`
   setEpisodesTitle(title, 1)
@@ -87,6 +88,9 @@ export async function openSeason(seasonNum: number, serieName: string): Promise<
     episodes.forEach((ep: TmdbEpisode, idx: number) => {
       dom.episodesContent!.appendChild(buildEpisodeItem(ep, idx))
     })
+
+    const hasNext = state._totalSeasons !== null && seasonNum < state._totalSeasons
+    document.getElementById('nextSeasonBtn')!.style.display = hasNext ? 'inline-flex' : 'none'
   } catch (e: any) {
     console.error(e)
     dom.episodesContent!.classList.remove('loading')

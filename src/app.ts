@@ -232,6 +232,17 @@ document.getElementById('logoBtn')!.addEventListener('click', () => {
   domRefs.playerFrame.src = ''  // Stop video when going home
   goHome()
 })
+// ── Next Season button ────────────────
+document.getElementById('nextSeasonBtn')?.addEventListener('click', () => {
+  if (state.currentSerieId && state.currentSeason !== null && state._totalSeasons !== null) {
+    const nextSeason = state.currentSeason + 1
+    if (nextSeason <= state._totalSeasons) {
+      const title = domRefs.episodesTitle!.textContent?.split(' · ')[0] ?? ''
+      openSeason(nextSeason, title)
+    }
+  }
+})
+
 // ── Watchlist toggle ──────────────────
 let previousViewBeforeFavs: ViewName | null = null
 let previousScrollPos: number = 0
