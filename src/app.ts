@@ -90,7 +90,7 @@ window.addEventListener('unhandledrejection', (e) => {
 // ── Validate token on startup ─────────
 if (!validateToken()) {
   document.body.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#CF6679;font-family:system-ui;text-align:center;padding:32px">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#0D9488;font-family:system-ui;text-align:center;padding:32px">
       <div>
         <h1 style="font-size:2rem;margin-bottom:16px">Configuration Error</h1>
         <p style="opacity:0.7">Missing TMDB token. Create a <code>.env</code> file with:<br>

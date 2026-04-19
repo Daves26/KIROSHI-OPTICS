@@ -1,0 +1,40 @@
+<svg width="100%" viewBox="0 0 500 500" role="img" xmlns="http://www.w3.org/2000/svg" style="">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Kiroshi — Logo Zen</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Logo minimalista inspirado en Kiroshi, estética zen japonesa con paleta teal/cyan.</desc>
+
+  <!-- Enso (círculo zen incompleto) -->
+  <circle cx="250" cy="220" r="110" fill="none" stroke="#0D9488" stroke-width="1.5" stroke-dasharray="628 40" stroke-dashoffset="20" stroke-linecap="round" opacity="0.5" style="fill:none;stroke:rgb(13, 148, 136);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-dasharray:628px, 40px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Anillo iris exterior — delgado -->
+  <circle cx="250" cy="220" r="82" fill="none" stroke="#0D9488" stroke-width="0.75" opacity="0.4" style="fill:none;stroke:rgb(13, 148, 136);color:rgb(255, 255, 255);stroke-width:0.75px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Forma del ojo — elipse limpia -->
+  <ellipse cx="250" cy="220" rx="72" ry="48" fill="none" stroke="#5EEAD4" stroke-width="1.2" opacity="0.9" style="fill:none;stroke:rgb(94, 234, 212);color:rgb(255, 255, 255);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.9;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Iris -->
+  <circle cx="250" cy="220" r="28" fill="none" stroke="#5EEAD4" stroke-width="0.75" opacity="0.5" style="fill:none;stroke:rgb(94, 234, 212);color:rgb(255, 255, 255);stroke-width:0.75px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Pupila -->
+  <circle cx="250" cy="220" r="10" fill="#22D3EE" opacity="0.85" style="fill:rgb(34, 211, 238);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Reflejo sutil -->
+  <circle cx="245" cy="215" r="3.5" fill="white" opacity="0.35" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.35;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Cuatro ticks cardinales mínimos -->
+  <g stroke="#5EEAD4" stroke-width="0.75" stroke-linecap="round" opacity="0.45" style="fill:rgb(0, 0, 0);stroke:rgb(94, 234, 212);color:rgb(255, 255, 255);stroke-width:0.75px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.45;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <line x1="250" y1="126" x2="250" y2="138" style="fill:rgb(0, 0, 0);stroke:rgb(94, 234, 212);color:rgb(255, 255, 255);stroke-width:0.75px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="250" y1="302" x2="250" y2="314" style="fill:rgb(0, 0, 0);stroke:rgb(94, 234, 212);color:rgb(255, 255, 255);stroke-width:0.75px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="164" y1="220" x2="176" y2="220" style="fill:rgb(0, 0, 0);stroke:rgb(94, 234, 212);color:rgb(255, 255, 255);stroke-width:0.75px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <line x1="324" y1="220" x2="336" y2="220" style="fill:rgb(0, 0, 0);stroke:rgb(94, 234, 212);color:rgb(255, 255, 255);stroke-width:0.75px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  </g>
+
+  <!-- Línea horizontal bajo el ojo -->
+  <line x1="195" y1="290" x2="305" y2="290" stroke="#0D9488" stroke-width="0.6" opacity="0.4" style="fill:rgb(0, 0, 0);stroke:rgb(13, 148, 136);color:rgb(255, 255, 255);stroke-width:0.6px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Nombre -->
+  <text x="250" y="330" text-anchor="middle" font-family="monospace" font-size="20" font-weight="500" letter-spacing="9" fill="#5EEAD4" opacity="0.9" style="fill:rgb(94, 234, 212);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.9;font-family:monospace;font-size:20px;font-weight:500;text-anchor:middle;dominant-baseline:auto">KIROSHI</text>
+
+  <!-- Subtítulo -->
+  <text x="250" y="354" text-anchor="middle" font-family="monospace" font-size="9" letter-spacing="4" fill="#0D9488" opacity="0.7" style="fill:rgb(13, 148, 136);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.7;font-family:monospace;font-size:9px;font-weight:400;text-anchor:middle;dominant-baseline:auto">MEDIA · 光</text>
+
+</svg>

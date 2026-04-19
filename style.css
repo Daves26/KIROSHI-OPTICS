@@ -64,7 +64,7 @@
 @property --theme-accent {
   syntax: '<color>';
   inherits: false;
-  initial-value: #CF6679;
+  initial-value: #0D9488;
 }
 
 @property --theme-shadow {
@@ -100,7 +100,7 @@
   --theme-text-2: rgba(24, 24, 27, 0.75);
   --theme-glass-bg: rgba(255, 255, 255, 0.72);
   --theme-glass-border: rgba(0, 0, 0, 0.06);
-  --theme-accent: #CF6679;
+  --theme-accent: #0D9488;
   --theme-shadow: rgba(0, 0, 0, 0.06);
 }
 
@@ -120,12 +120,13 @@
 /* ═══════════════════════════════════════ */
 
 :root {
-  --accent:        #CF6679;
-  --accent-soft:   rgba(207, 102, 121, 0.18);
-  --accent-glow:   rgba(207, 102, 121, 0.4);
-  --purple:        #7C4DFF;
-  --purple-glow:   rgba(124, 77, 255, 0.35);
-  --cyan:          #64B5F6;
+  --primary:        #0D9488;
+  --primary-soft:   rgba(13, 148, 136, 0.18);
+  --primary-glow:    rgba(13, 148, 136, 0.35);
+  --accent:         #5EEAD4;
+  --accent-soft:    rgba(94, 234, 212, 0.15);
+  --accent-glow:    rgba(94, 234, 212, 0.4);
+  --cyan:           #22D3EE;
   --bg:            #09090B;
   --bg-2:          #121218;
   --bg-3:          #1A1A24;
@@ -281,23 +282,23 @@ html {
 
 .orb1 {
   width: 900px; height: 900px;
-  background: radial-gradient(circle, rgba(207,102,121,0.5), transparent 75%);
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.5), transparent 75%);
   top: -150px; left: -150px;
 }
 .orb2 {
   width: 800px; height: 800px;
-  background: radial-gradient(circle, rgba(124,77,255,0.45), transparent 75%);
+  background: radial-gradient(circle, rgba(94, 234, 212, 0.45), transparent 75%);
   bottom: -100px; right: -100px;
 }
 .orb3 {
   width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(100,140,255,0.4), transparent 75%);
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.4), transparent 75%);
   top: 35%; left: 35%;
 }
 
 .orb4 {
   width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(100,181,246,0.3), transparent 75%);
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.3), transparent 75%);
   top: 60%; left: 15%;
   animation-delay: -10s;
 }
@@ -407,7 +408,7 @@ html {
 }
 
 :root[data-theme="light"] .watch-btn {
-  box-shadow: 0 4px 20px rgba(207, 102, 121, 0.3);
+  box-shadow: 0 4px 20px rgba(13, 148, 136, 0.3);
 }
 
 /* ── Respect user motion preferences ── */
@@ -612,7 +613,7 @@ html {
 }
 .hero-text h1 em {
   font-style: italic;
-  background: linear-gradient(135deg, var(--accent), var(--purple));
+  background: linear-gradient(135deg, var(--accent), var(--primary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -644,8 +645,8 @@ html {
 }
 .featured-card:hover {
   transform: scale(1.025) translateY(-4px);
-  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 40px var(--accent-glow);
-  border-color: rgba(207,102,121,0.25);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 40px var(--primary-glow);
+  border-color: rgba(13, 148, 136, 0.25);
 }
 
 .card-media {
@@ -686,7 +687,7 @@ html {
   display: inline-flex;
   align-items: center;
   background: var(--accent-soft);
-  border: 1px solid rgba(207,102,121,0.3);
+  border: 1px solid rgba(13, 148, 136, 0.3);
   border-radius: 100px;
   padding: 2px 10px;
   font-size: 0.7rem;
@@ -888,7 +889,7 @@ html {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, hsl(220, 25%, 18%), hsl(260, 30%, 12%));
+  background: linear-gradient(135deg, hsl(175, 25%, 18%), hsl(190, 30%, 12%));
   z-index: 0;
   transition: opacity 0.4s ease;
 }
@@ -1142,8 +1143,8 @@ html {
 /* Current episode highlight */
 .episode-item.current-episode {
   border-color: var(--accent);
-  background: linear-gradient(135deg, rgba(207,102,121,0.08), rgba(124,77,255,0.05));
-  box-shadow: 0 0 0 1px var(--accent), 0 8px 30px rgba(207,102,121,0.15);
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.08), rgba(94, 234, 212, 0.05));
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 30px rgba(13, 148, 136, 0.15);
 }
 .episode-item.current-episode .ep-num::before {
   content: '▶ ';
@@ -1436,7 +1437,7 @@ html {
 }
 
 .watch-btn {
-  background: linear-gradient(135deg, var(--accent), var(--purple));
+  background: linear-gradient(135deg, var(--accent), var(--primary));
   color: white;
   border: none;
 }
@@ -1882,7 +1883,7 @@ html {
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--purple));
+  background: linear-gradient(90deg, var(--accent), var(--primary));
   border-radius: 2px;
   transition: width 0.3s ease;
 }
@@ -1922,7 +1923,7 @@ html {
 }
 
 .adblock-tip__link:hover {
-  color: var(--purple);
+  color: var(--primary);
   opacity: 0.85;
 }
 
@@ -2122,10 +2123,10 @@ html {
    LIGHT MODE
    ═══════════════════════════════════════ */
 :root[data-theme="light"] {
-  --accent:        #CF6679;
-  --accent-soft:   rgba(207, 102, 121, 0.12);
-  --accent-glow:   rgba(207, 102, 121, 0.25);
-  --purple:        #7C4DFF;
+  --accent:        #0D9488;
+  --accent-soft:   rgba(13, 148, 136, 0.12);
+  --accent-glow:   rgba(13, 148, 136, 0.25);
+  --primary:       #5EEAD4;
   --bg:            #FAFAFA;
   --bg-2:          #F0F0F3;
   --bg-3:          #E8E8EC;
@@ -2145,7 +2146,7 @@ html {
 }
 
 :root[data-theme="light"] .result-poster::before {
-  background: linear-gradient(135deg, hsl(220, 20%, 85%), hsl(260, 25%, 90%));
+  background: linear-gradient(135deg, hsl(175, 20%, 85%), hsl(190, 25%, 90%));
 }
 
 :root[data-theme="light"] .no-poster {
@@ -2182,15 +2183,15 @@ html {
 }
 
 :root[data-theme="dark"] .orb1 {
-  background: radial-gradient(circle, rgba(207,102,121,0.55), transparent 75%);
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.55), transparent 75%);
   width: 1000px; height: 1000px;
 }
 :root[data-theme="dark"] .orb2 {
-  background: radial-gradient(circle, rgba(124,77,255,0.45), transparent 75%);
+  background: radial-gradient(circle, rgba(94, 234, 212, 0.45), transparent 75%);
   width: 900px; height: 900px;
 }
 :root[data-theme="dark"] .orb3 {
-  background: radial-gradient(circle, rgba(100,140,255,0.35), transparent 75%);
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.35), transparent 75%);
   width: 700px; height: 700px;
 }
 
@@ -2214,14 +2215,14 @@ html {
 
 /* ── Card accent glow on hover for dark mode ── */
 :root[data-theme="dark"] .result-card:hover {
-  border-color: rgba(207,102,121,0.35);
-  box-shadow: 
+  border-color: rgba(13, 148, 136, 0.35);
+  box-shadow:
     0 32px 64px -12px rgba(0, 0, 0, 0.65),
     0 20px 40px -8px rgba(0, 0, 0, 0.5),
     0 8px 16px -4px rgba(0, 0, 0, 0.4),
-    0 0 40px -8px rgba(207, 102, 121, 0.25),
-    0 0 0 1px rgba(207, 102, 121, 0.2),
-    inset 0 1px 0 rgba(255,255,255, 0.12);
+    0 0 40px -8px rgba(13, 148, 136, 0.25),
+    0 0 0 1px rgba(13, 148, 136, 0.2),
+    inset 0 1px 0 rgba(255,255, 255, 0.12);
 }
 
 /* ── Search pill enhanced for dark mode ── */
@@ -2743,7 +2744,7 @@ body {
     justify-content: center;
   }
   .watch-btn {
-    background: linear-gradient(135deg, var(--accent), var(--purple));
+    background: linear-gradient(135deg, var(--accent), var(--primary));
     color: white;
     border: none;
   }

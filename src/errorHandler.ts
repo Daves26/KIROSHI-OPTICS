@@ -51,7 +51,7 @@ export function showErrorScreen(message: string, action?: string): void {
         align-items: center;
         justify-content: center;
       ">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CF6679" stroke-width="1.5" stroke-linecap="round">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="1.5" stroke-linecap="round">
           <circle cx="12" cy="12" r="10"/>
           <path d="M15 9l-6 6M9 9l6 6"/>
         </svg>
@@ -83,9 +83,9 @@ export function showErrorScreen(message: string, action?: string): void {
         ${action ? `<button id="kiroshi-error-action" style="
           padding: 10px 24px;
           border-radius: 100px;
-          border: 1px solid rgba(207,102,121,0.3);
-          background: rgba(207,102,121,0.15);
-          color: #CF6679;
+          border: 1px solid rgba(13,148,136,0.3);
+          background: rgba(13,148,136,0.15);
+          color: #0D9488;
           font-size: 0.85rem;
           cursor: pointer;
           backdrop-filter: blur(16px);
