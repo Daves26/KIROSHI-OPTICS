@@ -47,30 +47,30 @@ export function deduplicateSearchResults(
   animeItems: any[]
 ): any[] {
   const seen = new Map<string, any>()
+  const seenTitles = new Set<string>()
 
-  function shouldKeep(existing: any, candidate: any): boolean {
-    const hasPoster = (item: any) => item.poster_path || item.backdrop_path || item.posterUrl
-    if (!hasPoster(existing) && hasPoster(candidate)) return true
-    if (hasPoster(existing) && !hasPoster(candidate)) return false
-
-    if (candidate.media_type === 'anime' && existing.media_type !== 'anime') return false
-    if (candidate.media_type !== 'anime' && existing.media_type === 'anime') return true
-
-    return false
-  }
-
+  // 1. Process TMDB items: allow multiple IDs for the same title
   for (const item of tmdbItems) {
-    const key = normalizeTitle(item.title || item.name || '')
-    if (key) seen.set(key, item)
+    const titleKey = normalizeTitle(item.title || item.name || '')
+    if (!titleKey) continue
+
+    // Key includes ID to allow different versions (remakes, etc.)
+    const uniqueKey = `tmdb_${item.id}`
+    seen.set(uniqueKey, item)
+    seenTitles.add(titleKey)
   }
 
+  // 2. Process Anime items: deduplicate against existing titles
   for (const item of animeItems) {
-    const key = normalizeTitle(item.title || '')
-    if (!key) continue
+    const titleKey = normalizeTitle(item.title || '')
+    if (!titleKey) continue
 
-    const existing = seen.get(key)
-    if (!existing || shouldKeep(existing, item)) {
-      seen.set(key, item)
+    // If we haven't seen this title in TMDB, add it
+    // We also use a unique key for anime to allow different versions if they appear alone
+    if (!seenTitles.has(titleKey)) {
+      const uniqueKey = `anime_${item.id}`
+      seen.set(uniqueKey, item)
+      seenTitles.add(titleKey)
     }
   }
 

@@ -59,7 +59,7 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
       : `<div class="no-poster">🎬</div>`}
     </div>
     <div class="result-info">
-      <div class="type-pill">${isAnime ? 'Anime' : (isTV ? 'Series' : 'Movie')}</div>
+      <div class="type-pill ${isAnime ? 'anime' : (isTV ? 'series' : 'movie')}">${isAnime ? 'Anime' : (isTV ? 'Series' : 'Movie')}</div>
       <div class="result-title">${escHtml(title)}</div>
       <div class="result-meta">
         ${year ? `<span class="result-year">${year}</span>` : ''}
@@ -143,7 +143,7 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
       </div>
     </div>
     <div class="result-info">
-      <div class="type-pill">${isAnime ? `E${item.episode || 1}` : (isTV ? `S${item.season}E${item.episode}` : 'Movie')}</div>
+      <div class="type-pill ${isAnime ? 'anime' : (isTV ? 'series' : 'movie')}">${isAnime ? `E${item.episode || 1}` : (isTV ? `S${item.season}E${item.episode}` : 'Movie')}</div>
       <div class="result-title">${escHtml(title)}</div>
     </div>
   `

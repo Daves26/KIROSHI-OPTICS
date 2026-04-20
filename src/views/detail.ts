@@ -56,6 +56,7 @@ export async function openAnime(id: number): Promise<void> {
 export function showAnimeDetail(data: AniListDetailResponse): void {
   dom.detailTitle!.textContent = data.title
   dom.detailType!.textContent = 'Anime'
+  dom.detailType!.className = 'card-badge anime'
   dom.detailType!.classList.remove(CLASSES.HIDDEN)
   state.currentPosterPath = data.poster_path ?? data.posterUrl ?? null
 
@@ -175,6 +176,7 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
 export function showSeriesDetail(data: TmdbDetailResponse): void {
   dom.detailTitle!.textContent = data.name ?? ''
   dom.detailType!.textContent = 'Series'
+  dom.detailType!.className = 'card-badge series'
   dom.detailType!.classList.remove(CLASSES.HIDDEN)
   state.currentPosterPath = data.poster_path ?? null
 
@@ -273,6 +275,8 @@ export function showSeriesDetail(data: TmdbDetailResponse): void {
 export function showMovieDetail(data: TmdbDetailResponse): void {
   dom.detailTitle!.textContent = data.title ?? ''
   dom.detailType!.textContent = 'Movie'
+  dom.detailType!.className = 'card-badge movie'
+  dom.detailType!.classList.remove(CLASSES.HIDDEN)
   state.currentPosterPath = data.poster_path ?? null
 
   setDetailTitle(data.title ?? '')

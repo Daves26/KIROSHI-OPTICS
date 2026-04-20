@@ -699,6 +699,24 @@ html {
   backdrop-filter: var(--blur-sm);
 }
 
+.card-badge.movie {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(13, 148, 136, 0.3);
+}
+
+.card-badge.series {
+  color: #60A5FA;
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.card-badge.anime {
+  color: #F472B6;
+  background: rgba(244, 114, 182, 0.15);
+  border-color: rgba(244, 114, 182, 0.3);
+}
+
 .card-info h3 {
   font-family: var(--font-display);
   font-size: clamp(1.3rem, 2.5vw, 1.8rem);
@@ -958,6 +976,21 @@ html {
   border-radius: 100px;
   padding: 1px 7px;
   width: fit-content;
+}
+
+.type-pill.movie {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.type-pill.series {
+  color: #60A5FA;
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.type-pill.anime {
+  color: #F472B6;
+  background: rgba(244, 114, 182, 0.15);
 }
 
 /* ── Load More ── */
