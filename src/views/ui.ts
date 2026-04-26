@@ -14,7 +14,7 @@ export function setLoading(on: boolean): void {
 // SKELETON CARDS
 // ═══════════════════════════════════════
 
-export function buildSkeletonCard(height: string = '240px'): HTMLElement {
+export function buildSkeletonCard(height: string = '262px'): HTMLElement {
   const card = document.createElement('div')
   card.className = `${CLASSES.RESULT_CARD} ${CLASSES.SKELETON}`
   card.style.height = height
@@ -79,7 +79,7 @@ export function buildEpisodeSkeleton(count: number = 6): DocumentFragment {
   for (let i = 0; i < count; i++) {
     const epCard = document.createElement('div')
     epCard.className = 'episode-item skeleton'
-    epCard.style.height = '80px'
+    epCard.style.height = '90px'
     fragment.appendChild(epCard)
   }
 
