@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   resolve: {
@@ -7,6 +8,41 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+
+  plugins: [
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'KIROSHI OPTICS',
+        short_name: 'KIROSHI',
+        description: 'See the Unseen - Movie & Series Catalog',
+        theme_color: '#0D9488',
+        icons: [
+          { src: '/icons/kiroshi_zen_logo.svg', sizes: '512x512', type: 'image/svg+xml' }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\.themoviedb\.org/,
+            handler: 'NetworkFirst',
+            options: { cacheName: 'tmdb', expiration: { maxEntries: 100, maxAgeSeconds: 86400 } }
+          },
+          {
+            urlPattern: /^https:\/\/graphql\.anilist\.co/,
+            handler: 'NetworkFirst',
+            options: { cacheName: 'anilist', expiration: { maxEntries: 100, maxAgeSeconds: 86400 } }
+          },
+          {
+            urlPattern: /fonts\.(googleapis|gstatic)\.com/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'fonts', expiration: { maxEntries: 20, maxAgeSeconds: 31536000 } }
+          }
+        ]
+      }
+    })
+  ],
 
   build: {
     // Target modern browsers (smaller bundle)

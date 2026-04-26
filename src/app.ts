@@ -52,34 +52,6 @@ window.addEventListener('ratelimit', ((e: Event) => {
   )
 }) as EventListener)
 
-// ═══════════════════════════════════════
-// SERVICE WORKER REGISTRATION
-// ═══════════════════════════════════════
-function registerServiceWorker(): void {
-  if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/sw.js', { type: 'module' })
-        .then((registration) => {
-          console.log('[App] SW registered:', registration.scope)
-          
-          // Listen for updates
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing
-            newWorker?.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                showToast('New version available! Refresh to update.', 'info')
-              }
-            })
-          })
-        })
-        .catch((error) => {
-          console.log('[App] SW registration failed:', error)
-        })
-    })
-  }
-}
-
 // Suppress View Transitions AbortError (harmless, occurs during rapid navigation)
 window.addEventListener('unhandledrejection', (e) => {
   if (e.reason?.name === 'AbortError' && e.reason?.message?.includes('Transition was skipped')) {
@@ -529,9 +501,6 @@ const handleHeaderScroll = () => {
 }
 window.addEventListener('scroll', handleHeaderScroll, { passive: true })
 handleHeaderScroll() // Check initial state
-
-// Register service worker for production
-registerServiceWorker()
 
 // Setup search
 setupSearch()
