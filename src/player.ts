@@ -4,7 +4,7 @@
 
 import type { ViewName, ContinueWatchingItem } from './types.js'
 import { SOURCES } from './constants.js'
-import { state, getActiveSource, setActiveSource, saveContinueWatching, setLastSourceForType, getLastSourceForType } from './state.js'
+import { state, getActiveSource, setActiveSource, saveContinueWatching, getContinueWatching, setLastSourceForType, getLastSourceForType } from './state.js'
 import { showToast } from './toast.js'
 import { setPlayerTitle } from './router.js'
 
@@ -108,7 +108,8 @@ export function playEpisode(idx: number, title: string | null = null): void {
     poster_path: state.currentPosterPath,
     season: state.currentSeason!,
     episode: ep.episode_number,
-    progress: Math.round(((idx + 1) / state.currentEpisodes.length) * 100),
+    progress: Math.round((ep.episode_number / state.currentEpisodes.length) * 100),
+    completed: ep.episode_number === state.currentEpisodes.length,
   } as ContinueWatchingItem)
 
   // Filter source dropdown: show all sources for TV content
@@ -157,7 +158,7 @@ export function playMovie(id: number, title: string): void {
     media_type: 'movie',
     title,
     poster_path: state.currentPosterPath,
-    progress: 0,
+    progress: 10,
   } as ContinueWatchingItem)
 
   // Filter source dropdown: show all sources for movies
@@ -238,7 +239,8 @@ export function playAnime(idx: number, title: string | null = null): void {
     title: epTitle,
     poster_path: state.currentPosterPath,
     episode: epNum,
-    progress: Math.round(((idx + 1) / totalEps) * 100),
+    progress: Math.round((epNum / totalEps) * 100),
+    completed: epNum === totalEps,
   } as ContinueWatchingItem)
 
   // Filter source dropdown: show only anime-compatible sources
@@ -396,8 +398,42 @@ export function prevEpisode(): void {
 
 export function nextEpisode(): void {
   if (state.currentEpIndex !== null && state.currentEpIndex < state.currentEpisodes.length - 1) {
+    markCurrentAsCompleted()
     playEpisode(state.currentEpIndex + 1)
   } else if (state.currentAnimeEpIndex !== null && state.currentAnimeEpIndex < state.currentAnimeEpisodes.length - 1) {
+    markCurrentAnimeAsCompleted()
     playAnime(state.currentAnimeEpIndex + 1)
+  }
+}
+
+function markCurrentAsCompleted(): void {
+  if (state.currentEpIndex === null || !state.currentEpisodes[state.currentEpIndex]) return
+
+  const ep = state.currentEpisodes[state.currentEpIndex]
+  const existing = getContinueWatching()[0]
+
+  if (existing && existing.id === `tv-${state.currentSerieId}` && !existing.completed) {
+    saveContinueWatching({
+      ...existing,
+      episode: ep.episode_number,
+      progress: 100,
+      completed: true,
+    })
+  }
+}
+
+function markCurrentAnimeAsCompleted(): void {
+  if (state.currentAnimeEpIndex === null) return
+
+  const epNum = state.currentAnimeEpIndex + 1
+  const existing = getContinueWatching()[0]
+
+  if (existing && existing.id === `anime-${state.currentAnimeId}` && !existing.completed) {
+    saveContinueWatching({
+      ...existing,
+      episode: epNum,
+      progress: 100,
+      completed: true,
+    })
   }
 }

@@ -6,6 +6,7 @@ import { buildEpisodeSkeleton } from './ui.js'
 import { dom, onShowView } from './context.js'
 import { buildEpisodeItem, buildAnimeEpisodeItem } from './components.js'
 import { setEpisodesTitle } from '../router.js'
+import { playEpisode } from '../player.js'
 
 // ═══════════════════════════════════════
 // ANIME EPISODES VIEW
@@ -62,7 +63,7 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
 // EPISODES VIEW (Series Seasons)
 // ═══════════════════════════════════════
 
-export async function openSeason(seasonNum: number, serieName: string): Promise<void> {
+export async function openSeason(seasonNum: number, serieName: string, autoPlayEpisode?: number): Promise<void> {
   state.currentSeason = seasonNum
   dom.episodesTitle!.textContent = `${escHtml(serieName)} · Season ${seasonNum}`
 
@@ -94,6 +95,14 @@ export async function openSeason(seasonNum: number, serieName: string): Promise<
     const hasNext = state._totalSeasons !== null && seasonNum < state._totalSeasons
     document.getElementById('prevSeasonBtn')!.style.display = hasPrev ? 'inline-flex' : 'none'
     document.getElementById('nextSeasonBtn')!.style.display = hasNext ? 'inline-flex' : 'none'
+
+    // Auto-play specific episode if requested (for Continue Watching resume)
+    if (autoPlayEpisode !== undefined) {
+      const epIndex = episodes.findIndex((ep: TmdbEpisode) => ep.episode_number === autoPlayEpisode)
+      if (epIndex !== -1) {
+        playEpisode(epIndex, serieName)
+      }
+    }
   } catch (e: any) {
     console.error(e)
     dom.episodesContent!.classList.remove('loading')

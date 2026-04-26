@@ -28,6 +28,7 @@ export const state: AppState = {
   currentAnimeEpIndex: null,
   // Pending resume (for Continue Watching)
   pendingAnimeResume: null, // { episodeIndex, title }
+  pendingTvResume: null, // { season, episode, title }
   // Source preferences (internal, not serialized)
   _lastMovieSource: null,
   _lastAnimeSource: null,

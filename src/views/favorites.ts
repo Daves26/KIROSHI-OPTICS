@@ -3,6 +3,7 @@ import { getFavorites, removeFromFavorites, state, isFavorite } from '../state.j
 import type { MediaItem } from '../types.js'
 import { dom, onShowView } from './context.js'
 import { buildResultCard } from './components.js'
+import { refreshContinueWatchingRow } from './home.js'
 
 // ═══════════════════════════════════════
 // FAVORITES VIEW
@@ -53,6 +54,7 @@ export function goHome(): void {
   if (isHomeActive) {
     clearSearchState()
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    refreshContinueWatchingRow()
   } else {
     onShowView('home')
     clearSearchState()

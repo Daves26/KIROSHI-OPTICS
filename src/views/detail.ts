@@ -159,6 +159,14 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
     if (type === 'tv') {
       state._totalSeasons = (mainData as any).number_of_seasons ?? null
       showSeriesDetail(mainData)
+
+      if (state.pendingTvResume) {
+        const { season, episode, title } = state.pendingTvResume
+        state.pendingTvResume = null
+        requestAnimationFrame(() => {
+          onOpenSeason(season, title, episode)
+        })
+      }
     } else {
       showMovieDetail(mainData)
     }

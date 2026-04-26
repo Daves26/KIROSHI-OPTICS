@@ -267,6 +267,12 @@ export interface PendingResume {
   title: string;
 }
 
+export interface PendingTvResume {
+  season: number;
+  episode: number;
+  title: string;
+}
+
 export interface AppState {
   currentSerieId: number | null;
   currentSerieType: 'movie' | 'tv' | null;
@@ -283,6 +289,7 @@ export interface AppState {
   currentAnimeEpIndex: number | null;
   // Pending resume (for Continue Watching)
   pendingAnimeResume: PendingResume | null;
+  pendingTvResume: PendingTvResume | null;
   // Internal state (not serialized)
   _currentTitle?: string;
   _currentAnimeTitle?: string;
@@ -329,6 +336,7 @@ export interface ContinueWatchingItem {
   season?: number;
   episode?: number;
   progress: number;
+  completed?: boolean;
   watchedAt: number;
 }
 
@@ -383,7 +391,7 @@ export interface ViewRefs {
 // ── Callback Types ─────────────────────
 export type ShowViewCallback = (name: ViewName, onPlayerExit?: () => void) => void;
 export type OpenDetailCallback = (id: number, type: MediaType) => void;
-export type OpenSeasonCallback = (season: number, title: string) => void;
+export type OpenSeasonCallback = (season: number, title: string, autoPlayEpisode?: number) => void;
 export type OpenAnimeCallback = (id: number) => void;
 export type OpenAnimeEpisodeCallback = (index: number, title: string) => void;
 export type OpenAnimeEpisodesCallback = (title: string) => void;

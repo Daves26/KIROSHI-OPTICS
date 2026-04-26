@@ -121,8 +121,6 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
     ? rawPoster
     : (rawPoster ? `${IMG_BASE}/${posterSize}${rawPoster}` : null)
 
-  const progress = item.progress || 0
-
   const card = document.createElement('div')
   card.className = CLASSES.RESULT_CARD
   ;(card as any).dataset.id = item.id
@@ -138,12 +136,9 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
       ${poster
       ? `<img src="${poster}" alt="${escHtml(title)}" loading="lazy" />`
       : `<div class="no-poster">🎬</div>`}
-      <div class="progress-bar">
-        <div class="progress-fill" style="width:${progress}%"></div>
-      </div>
     </div>
     <div class="result-info">
-      <div class="type-pill ${isAnime ? 'anime' : (isTV ? 'series' : 'movie')}">${isAnime ? `E${item.episode || 1}` : (isTV ? `S${item.season}E${item.episode}` : 'Movie')}</div>
+      <div class="type-pill ${isAnime ? 'anime' : (isTV ? 'series' : 'movie')}">${isAnime ? `E${item.episode || 1}` : (isTV ? `S${item.season || 1}E${item.episode || 1}` : 'Movie')}</div>
       <div class="result-title">${escHtml(title)}</div>
     </div>
   `
@@ -163,7 +158,8 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
       const epIdx = (item.episode || 1) - 1
       state.pendingAnimeResume = { episodeIndex: epIdx, title }
       onOpenAnime(item.tmdbId || Number(item.id))
-    } else if (isTV && item.season && item.episode) {
+    } else if (isTV) {
+      state.pendingTvResume = { season: item.season || 1, episode: item.episode || 1, title }
       onOpenDetail(item.tmdbId, 'tv')
     } else {
       onOpenDetail(item.tmdbId, 'movie')

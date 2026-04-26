@@ -89,7 +89,13 @@ export function refreshContinueWatchingRow(): void {
     }
     setContinueWatchingRow(null)
   } else if (continueWatchingRow) {
-    // Row exists, handled by card animations
+    const contentEl = continueWatchingRow.querySelector('.row-content')
+    if (contentEl) {
+      contentEl.innerHTML = ''
+      watching.forEach(item => {
+        contentEl.appendChild(buildContinueWatchingCard(item))
+      })
+    }
   } else {
     const firstHomeRow = dom.homeRows?.querySelector(`.${CLASSES.HOME_ROW}`)
     setContinueWatchingRow(buildContinueWatchingRow(watching))
