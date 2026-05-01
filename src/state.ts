@@ -32,6 +32,8 @@ export const state: AppState = {
   // Source preferences (internal, not serialized)
   _lastMovieSource: null,
   _lastAnimeSource: null,
+  _lastTvSourceById: {},
+  _lastAnimeSourceById: {},
   _activeSource: null,
   _playerSrcBeforeSearch: '',
   _totalSeasons: null,
@@ -47,22 +49,49 @@ export function setActiveSource(key: string): void {
 }
 
 /**
- * Get last used source for a specific content type
+ * Get last used source for a specific content type and optionally series ID
  */
-export function getLastSourceForType(type: 'movie' | 'anime'): string | null {
+export function getLastSourceForType(type: 'movie' | 'anime' | 'tv', seriesId?: number): string | null {
+  // If seriesId is provided, check for series-specific preferences first
+  if (seriesId !== undefined && seriesId !== null) {
+    if (type === 'tv' && state._lastTvSourceById[seriesId]) {
+      return state._lastTvSourceById[seriesId];
+    }
+    if (type === 'anime' && state._lastAnimeSourceById[seriesId]) {
+      return state._lastAnimeSourceById[seriesId];
+    }
+  }
+  
+  // Fall back to global preferences
   if (type === 'movie') {
     return state._lastMovieSource
   }
-  return state._lastAnimeSource
+  if (type === 'anime') {
+    return state._lastAnimeSource
+  }
+  return null;
 }
 
 /**
- * Save last used source for a specific content type
+ * Save last used source for a specific content type and optionally series ID
  */
-export function setLastSourceForType(type: 'movie' | 'anime', sourceKey: string): void {
+export function setLastSourceForType(type: 'movie' | 'anime' | 'tv', sourceKey: string, seriesId?: number): void {
+  // If seriesId is provided, save series-specific preference
+  if (seriesId !== undefined && seriesId !== null) {
+    if (type === 'tv') {
+      state._lastTvSourceById[seriesId] = sourceKey;
+      return;
+    }
+    if (type === 'anime') {
+      state._lastAnimeSourceById[seriesId] = sourceKey;
+      return;
+    }
+  }
+  
+  // Save global preference
   if (type === 'movie') {
     state._lastMovieSource = sourceKey
-  } else {
+  } else if (type === 'anime') {
     state._lastAnimeSource = sourceKey
   }
 }
@@ -135,8 +164,60 @@ export function removeFromContinueWatching(id: string): boolean {
     delete data[id]
     localStorage.setItem(LS_WATCHING_KEY, JSON.stringify(data))
     window.dispatchEvent(new Event('storage'))
+    
+    // Also remove the corresponding source preferences if this is a TV series or anime
+    if (id.startsWith('tv-')) {
+      const seriesId = parseInt(id.replace('tv-', ''), 10);
+      if (!isNaN(seriesId) && state._lastTvSourceById[seriesId]) {
+        delete state._lastTvSourceById[seriesId];
+      }
+    } else if (id.startsWith('anime-')) {
+      const animeId = parseInt(id.replace('anime-', ''), 10);
+      if (!isNaN(animeId) && state._lastAnimeSourceById[animeId]) {
+        delete state._lastAnimeSourceById[animeId];
+      }
+    }
+    
     return true
   }
   return false
+}
+
+export function clearOrphanedSourcePreferences(): void {
+  // Get current continue watching items
+  const continueWatchingItems = getContinueWatching();
+  const validTvIds = new Set<number>();
+  const validAnimeIds = new Set<number>();
+  
+  // Extract valid series IDs from continue watching items
+  continueWatchingItems.forEach(item => {
+    if (item.id.startsWith('tv-')) {
+      const seriesId = parseInt(item.id.replace('tv-', ''), 10);
+      if (!isNaN(seriesId)) {
+        validTvIds.add(seriesId);
+      }
+    } else if (item.id.startsWith('anime-')) {
+      const animeId = parseInt(item.id.replace('anime-', ''), 10);
+      if (!isNaN(animeId)) {
+        validAnimeIds.add(animeId);
+      }
+    }
+  });
+  
+  // Remove orphaned TV source preferences
+  Object.keys(state._lastTvSourceById).forEach(seriesIdStr => {
+    const seriesId = parseInt(seriesIdStr, 10);
+    if (!validTvIds.has(seriesId)) {
+      delete state._lastTvSourceById[seriesId];
+    }
+  });
+  
+  // Remove orphaned anime source preferences
+  Object.keys(state._lastAnimeSourceById).forEach(animeIdStr => {
+    const animeId = parseInt(animeIdStr, 10);
+    if (!validAnimeIds.has(animeId)) {
+      delete state._lastAnimeSourceById[animeId];
+    }
+  });
 }
 

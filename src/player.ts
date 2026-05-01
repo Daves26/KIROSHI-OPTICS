@@ -61,7 +61,7 @@ export function playEpisode(idx: number, title: string | null = null): void {
   }
 
   // Restore last used source for movie/tv if available
-  const lastSource = getLastSourceForType('movie')
+  const lastSource = getLastSourceForType('tv', state.currentSerieId ?? undefined)
   if (lastSource && SOURCES[lastSource]) {
     setActiveSource(lastSource)
   }
@@ -73,8 +73,8 @@ export function playEpisode(idx: number, title: string | null = null): void {
     return
   }
 
-  // Save this source preference for movie/tv
-  setLastSourceForType('movie', sourceKey)
+  // Save this source preference for tv series
+  setLastSourceForType('tv', sourceKey, state.currentSerieId ?? undefined)
 
   const url = source.getTv(state.currentSerieId!, state.currentSeason!, ep.episode_number)
 
@@ -120,7 +120,7 @@ export function playEpisode(idx: number, title: string | null = null): void {
 
 // ── Play Movie ────────────────────────
 export function playMovie(id: number, title: string): void {
-  // Restore last used source for movie/tv if available
+  // Restore last used source for movie if available
   const lastSource = getLastSourceForType('movie')
   if (lastSource && SOURCES[lastSource]) {
     setActiveSource(lastSource)
@@ -180,7 +180,7 @@ export function playAnime(idx: number, title: string | null = null): void {
   let source = SOURCES[sourceKey] ?? SOURCES['videasy']
 
   // Restore last used anime source if available
-  const lastAnimeSource = getLastSourceForType('anime')
+  const lastAnimeSource = getLastSourceForType('anime', state.currentAnimeId ?? undefined)
   if (lastAnimeSource && SOURCES[lastAnimeSource]?.getAnime) {
     sourceKey = lastAnimeSource
     source = SOURCES[lastAnimeSource]
@@ -204,7 +204,7 @@ export function playAnime(idx: number, title: string | null = null): void {
   }
 
   // Save this source preference for anime
-  setLastSourceForType('anime', sourceKey)
+  setLastSourceForType('anime', sourceKey, state.currentAnimeId ?? undefined)
 
   const url = source.getAnime
     ? source.getAnime(state.currentAnimeId!, epNum)
@@ -271,6 +271,16 @@ export function changeSource(newKey: string): void {
   }
 
   setActiveSource(newKey)
+  
+  // Save this source preference for the current series/anime
+  if (state.currentAnimeId !== null) {
+    setLastSourceForType('anime', newKey, state.currentAnimeId)
+  } else if (state.currentSerieId !== null) {
+    setLastSourceForType('tv', newKey, state.currentSerieId)
+  } else {
+    // For movies, use the existing global preference
+    setLastSourceForType('movie', newKey)
+  }
   const source = SOURCES[newKey]!
   
   // Clear iframe immediately to stop audio
@@ -343,9 +353,19 @@ export function tryNextSource(): void {
       continue
     }
 
-    // Found valid source
-    if (nextKey && isValidSource(nextKey)) {
-      setActiveSource(nextKey)
+      // Found valid source
+      if (nextKey && isValidSource(nextKey)) {
+        setActiveSource(nextKey)
+        
+        // Save this source preference for the current series/anime
+        if (state.currentAnimeId !== null) {
+          setLastSourceForType('anime', nextKey, state.currentAnimeId)
+        } else if (state.currentSerieId !== null) {
+          setLastSourceForType('tv', nextKey, state.currentSerieId)
+        } else {
+          // For movies, use the existing global preference
+          setLastSourceForType('movie', nextKey)
+        }
       const source = SOURCES[nextKey]!
       
       // Build URL directly

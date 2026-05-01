@@ -490,6 +490,12 @@ initErrorHandlers()
 // Initialize cleanup listeners
 initCleanup()
 
+// Periodically clean up orphaned source preferences
+import { clearOrphanedSourcePreferences } from './state.js'
+setInterval(() => {
+  clearOrphanedSourcePreferences();
+}, 5 * 60 * 1000); // Run every 5 minutes
+
 // Apple-style header scroll shadow
 const headerEl = document.querySelector('.header')!
 const handleHeaderScroll = () => {

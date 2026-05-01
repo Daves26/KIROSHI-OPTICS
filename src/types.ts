@@ -304,6 +304,9 @@ export interface AppState {
   // Source preferences by type
   _lastMovieSource: string | null;
   _lastAnimeSource: string | null;
+  // Source preferences by series ID
+  _lastTvSourceById: Record<number, string>;
+  _lastAnimeSourceById: Record<number, string>;
   // Currently active source
   _activeSource: string | null;
   // Player src saved before search (to restore after cancel)
