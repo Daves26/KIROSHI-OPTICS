@@ -2283,15 +2283,6 @@ html {
   color: #0D9488;
 }
 
-/* Light mode: titles font-weight: 600 */
-:root[data-theme="light"] .result-title,
-:root[data-theme="light"] .movie-title,
-:root[data-theme="light"] .row-title,
-:root[data-theme="light"] .section-subtitle,
-:root[data-theme="light"] .ep-name {
-  font-weight: 600;
-}
-
 /* ═══════════════════════════════════════
    4. PREMIUM THEME EFFECTS (Dark) — Included with sections above
    ═══════════════════════════════════════ */
