@@ -78,6 +78,9 @@ export function playEpisode(idx: number, title: string | null = null): void {
 
   const url = source.getTv(state.currentSerieId!, state.currentSeason!, ep.episode_number)
 
+  if (title) {
+    state._currentTitle = title
+  }
   const epTitle = title ?? state._currentTitle ?? 'Unknown'
   playerTitle.textContent = `T${state.currentSeason} E${ep.episode_number} – ${ep.name}`
 
