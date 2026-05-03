@@ -9,7 +9,7 @@
 
 **A sleek movie and series streaming catalog powered by TMDB and AniList**
 
-[Live Demo](https://kiroshi-optics.vercel.app) · [Report Bug](https://github.com/Daves26/KIROSHI-OPTICS/issues) · [Request Feature](https://github.com/Daves26/KIROSHI-OPTICS/issues)
+[Live Demo](https://kiroshi.vercel.app) · [Report Bug](https://github.com/Daves26/KIROSHI-OPTICS/issues) · [Request Feature](https://github.com/Daves26/KIROSHI-OPTICS/issues)
 
 </div>
 
