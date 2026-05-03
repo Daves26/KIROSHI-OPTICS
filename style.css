@@ -49,6 +49,12 @@
   initial-value: rgba(240,240,245,0.68);
 }
 
+@property --theme-text-3 {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: rgba(24,24,27,0.65);
+}
+
 @property --theme-glass-bg {
   syntax: '<color>';
   inherits: false;
@@ -94,10 +100,11 @@
 #themeToggle:checked ~ .bg-orbs,
 #themeToggle:checked ~ body,
 #themeToggle:checked ~ .header {
-  --theme-bg: #FAFAFA;
-  --theme-bg-2: #F0F0F3;
+  --theme-bg: #F5F7FA;
+  --theme-bg-2: #EEF1F5;
   --theme-text: #18181B;
   --theme-text-2: rgba(24, 24, 27, 0.75);
+  --theme-text-3: rgba(24, 24, 27, 0.65);
   --theme-glass-bg: rgba(255, 255, 255, 0.72);
   --theme-glass-border: rgba(0, 0, 0, 0.06);
   --theme-accent: #0D9488;
@@ -366,18 +373,48 @@ html {
 
 /* ── Enhanced card shadows for light mode ── */
 :root[data-theme="light"] .result-card {
+  border: 1px solid #E1E4E8;
   box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.03),
     inset 0 0.5px 0 rgba(255,255,255,0.8);
 }
 
 :root[data-theme="light"] .result-card:hover {
+  border: 1px solid #E1E4E8;
   box-shadow: 
-    0 24px 48px -8px rgba(0, 0, 0, 0.1),
-    0 12px 24px -4px rgba(0, 0, 0, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.05),
     0 0 0 1px rgba(255,255,255,0.9),
     inset 0 0.5px 0 rgba(255,255,255,0.9);
+}
+
+:root[data-theme="light"] .season-card {
+  border: 1px solid #E1E4E8;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+:root[data-theme="light"] .season-card:hover {
+  border: 1px solid #E1E4E8;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .episode-item {
+  border: 1px solid #E1E4E8;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+:root[data-theme="light"] .episode-item:hover {
+  border: 1px solid #E1E4E8;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* ── Search pill enhanced for light mode ── */
@@ -2165,8 +2202,8 @@ html {
   --accent-soft:   rgba(13, 148, 136, 0.12);
   --accent-glow:   rgba(13, 148, 136, 0.25);
   --primary:       #5EEAD4;
-  --bg:            #FAFAFA;
-  --bg-2:          #F0F0F3;
+  --bg:            #F5F7FA;
+  --bg-2:          #EEF1F5;
   --bg-3:          #E8E8EC;
   --glass-bg:      rgba(255, 255, 255, 0.72);
   --glass-bg-deep: rgba(255, 255, 255, 0.85);
@@ -2178,7 +2215,7 @@ html {
   --blur-h:        blur(28px) saturate(180%);
   --text:          #18181B;
   --text-2:        rgba(24, 24, 27, 0.75);
-  --text-3:        rgba(24, 24, 27, 0.52);
+  --text-3:        rgba(24, 24, 27, 0.65);
   --shadow:        0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-card:   0 16px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
 }
@@ -2209,6 +2246,50 @@ html {
     rgba(0, 0, 0, 0.025) 35%,
     transparent 65%
   );
+}
+
+/* Light mode: pastel badges for .card-badge */
+:root[data-theme="light"] .card-badge.series {
+  background: #EFF6FF;
+  color: #1E40AF;
+  border-color: rgba(30, 64, 175, 0.3);
+}
+
+:root[data-theme="light"] .card-badge.anime {
+  background: #FFF1F2;
+  color: #9D174D;
+  border-color: rgba(157, 23, 77, 0.3);
+}
+
+:root[data-theme="light"] .card-badge.movie {
+  background: #E6FFFA;
+  color: #0D9488;
+  border-color: rgba(13, 148, 136, 0.3);
+}
+
+/* Light mode: pastel type pills */
+:root[data-theme="light"] .type-pill.series {
+  background: #EFF6FF;
+  color: #1E40AF;
+}
+
+:root[data-theme="light"] .type-pill.anime {
+  background: #FFF1F2;
+  color: #9D174D;
+}
+
+:root[data-theme="light"] .type-pill.movie {
+  background: #E6FFFA;
+  color: #0D9488;
+}
+
+/* Light mode: titles font-weight: 600 */
+:root[data-theme="light"] .result-title,
+:root[data-theme="light"] .movie-title,
+:root[data-theme="light"] .row-title,
+:root[data-theme="light"] .section-subtitle,
+:root[data-theme="light"] .ep-name {
+  font-weight: 600;
 }
 
 /* ═══════════════════════════════════════
