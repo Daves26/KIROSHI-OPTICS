@@ -2220,6 +2220,17 @@ html {
   --shadow-card:   0 16px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
+/* Light mode: toast text stays light on dark toast background */
+:root[data-theme="light"] .toast {
+  color: #F0F0F5;
+}
+:root[data-theme="light"] .toast-close {
+  color: rgba(240, 240, 245, 0.65);
+}
+:root[data-theme="light"] .toast-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 :root[data-theme="light"] .result-poster::before {
   background: linear-gradient(135deg, hsl(175, 20%, 85%), hsl(190, 25%, 90%));
 }
