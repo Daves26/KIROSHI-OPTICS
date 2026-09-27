@@ -2,13 +2,38 @@ import { CLASSES, SKELETON_COUNT_SEARCH, SEARCH_DEBOUNCE_MS } from '../constants
 import { tmdb } from '../api.js'
 import { searchAnime as searchAnimeFromAnilist } from '../anilist.js'
 import { state } from '../state.js'
-import { escHtml, debounce, normalizeTitle } from './utils.js'
+import { debounce, normalizeTitle } from './utils.js'
 import { buildSkeletonCard } from './ui.js'
 import { dom, onShowView } from './context.js'
 import { buildResultCard } from './components.js'
-import { createSearchVirtualScroller } from '../virtualScroller.js'
+import { createSearchVirtualScroller, type VirtualScroller } from '../virtualScroller.js'
 import type { ViewName } from '../types.js'
 import { getLastPlayerSrc } from '../router.js'
+import { openCategory } from './category.js'
+import type { TmdbMedia, TmdbSearchResponse, NormalizedAnime } from '../types.js'
+
+type SearchItem = TmdbMedia | NormalizedAnime
+let searchVersion = 0
+let searchItems: SearchItem[] = []
+let tmdbPage = 0
+let animePage = 0
+let tmdbHasMore = true
+let animeHasMore = true
+let searchBusy = false
+let searchScroller: VirtualScroller<SearchItem> | null = null
+
+function invalidateSearch(): void {
+  searchVersion++
+  searchScroller?.destroy()
+  searchScroller = null
+  searchItems = []
+  tmdbPage = 0
+  animePage = 0
+  tmdbHasMore = true
+  animeHasMore = true
+  searchBusy = false
+  dom.loadMore?.classList.add(CLASSES.HIDDEN)
+}
 
 // ═══════════════════════════════════════
 // SEARCH DEDUPLICATION
@@ -86,9 +111,9 @@ export function deduplicateSearchResults(
  */
 function getCurrentView(): ViewName {
   // Check which view is currently active
-  const views = ['home', 'detail', 'episodes', 'player', 'favs'] as ViewName[]
+  const views = ['home', 'category', 'detail', 'episodes', 'player', 'favs'] as ViewName[]
   for (const view of views) {
-    const el = document.getElementById(view === 'home' ? 'homeView' : view === 'detail' ? 'detailView' : view === 'episodes' ? 'episodesView' : view === 'player' ? 'playerView' : 'favsView')
+    const el = document.getElementById(`${view === 'favs' ? 'favs' : view}View`)
     if (el && el.classList.contains('active')) {
       return view
     }
@@ -97,9 +122,8 @@ function getCurrentView(): ViewName {
 }
 
 export function setupSearch(): void {
-  let searchTimeout: ReturnType<typeof setTimeout> | null = null
-
   const handleInput = debounce((q: string) => {
+    if (q !== dom.searchInput?.value.trim()) return
     if (!q) {
       dom.searchResults?.classList.add(CLASSES.HIDDEN)
       dom.resultsGrid!.innerHTML = ''
@@ -122,8 +146,8 @@ export function setupSearch(): void {
   dom.searchInput?.addEventListener('input', () => {
     const q = dom.searchInput!.value.trim()
     ;(dom.clearBtn as HTMLElement)?.classList.toggle('visible', q.length > 0)
-    clearTimeout(searchTimeout!)
-    searchTimeout = setTimeout(() => handleInput(q), 50)
+    invalidateSearch()
+    handleInput(q)
   })
 
   dom.clearBtn?.addEventListener('click', () => {
@@ -131,7 +155,7 @@ export function setupSearch(): void {
   })
 
   dom.loadMoreBtn?.addEventListener('click', () => {
-    doSearch(state.searchQuery, state.searchPage + 1, true)
+    if (!searchBusy) void doSearch(state.searchQuery, state.searchPage + 1, true)
   })
 }
 
@@ -160,6 +184,10 @@ function restorePreviousView(): void {
     onShowView('favs')
     dom.homeRows?.classList.remove(CLASSES.HIDDEN)
     dom.heroText?.classList.remove(CLASSES.HIDDEN)
+  } else if (viewToRestore === 'category' && state.currentCategoryId) {
+    openCategory(state.currentCategoryId)
+    dom.homeRows?.classList.remove(CLASSES.HIDDEN)
+    dom.heroText?.classList.remove(CLASSES.HIDDEN)
   } else if (viewToRestore === 'player') {
     onShowView('player')
     dom.homeRows?.classList.remove(CLASSES.HIDDEN)
@@ -179,11 +207,21 @@ function restorePreviousView(): void {
  * Cancel search and restore previous view
  */
 export function cancelSearch(): void {
+  invalidateSearch()
   dom.searchInput!.value = ''
   ;(dom.clearBtn as HTMLElement).classList.remove('visible')
   dom.searchResults?.classList.add(CLASSES.HIDDEN)
   dom.resultsGrid!.innerHTML = ''
   restorePreviousView()
+}
+
+export function resetSearchSession(): void {
+  invalidateSearch()
+  searchTrackingActive = false
+  viewSavedForCurrentSearch = false
+  previousViewBeforeSearch = null
+  previousScrollPosBeforeSearch = 0
+  state.searchQuery = ''
 }
 
 /**
@@ -194,6 +232,11 @@ export function isSearchActive(): boolean {
 }
 
 export async function doSearch(query: string, page: number = 1, append: boolean = false): Promise<void> {
+  if (append && (searchBusy || query !== state.searchQuery)) return
+  if (!append) invalidateSearch()
+  const version = searchVersion
+  searchBusy = true
+  if (dom.loadMoreBtn) (dom.loadMoreBtn as HTMLButtonElement).disabled = true
   if (!append) {
     const focusedEl = document.activeElement
     onShowView('home')
@@ -209,96 +252,65 @@ export async function doSearch(query: string, page: number = 1, append: boolean 
     dom.heroText?.classList.add(CLASSES.HIDDEN)
   }
   state.searchQuery = query
-  state.searchPage = page
 
   try {
     const [tmdbResult, animeResult] = await Promise.allSettled([
-      tmdb<any>('/search/multi', { query, page, include_adult: false }),
-      searchAnimeFromAnilist(query, page),
+      tmdbHasMore ? tmdb<TmdbSearchResponse>('/search/multi', { query, page: tmdbPage + 1, include_adult: false }) : Promise.resolve(null),
+      animeHasMore ? searchAnimeFromAnilist(query, animePage + 1) : Promise.resolve(null),
     ])
+    if (version !== searchVersion || query !== dom.searchInput?.value.trim()) return
 
-    let tmdbItems: any[] = []
-    let animeItems: any[] = []
-    let totalResults = 0
+    let tmdbItems: TmdbMedia[] = []
+    let animeItems: NormalizedAnime[] = []
 
-    if (tmdbResult.status === 'fulfilled') {
+    if (tmdbResult.status === 'fulfilled' && tmdbResult.value) {
       const data = tmdbResult.value
-      tmdbItems = data.results.filter((r: any) => r.media_type !== 'person' && (r.poster_path || r.backdrop_path))
-      totalResults += data.total_results
+      tmdbItems = data.results.filter((r): r is TmdbMedia => r.media_type !== 'person' && !!(r.poster_path || r.backdrop_path))
+      tmdbPage++
+      tmdbHasMore = tmdbPage < data.total_pages
     }
 
-    if (animeResult.status === 'fulfilled') {
+    if (animeResult.status === 'fulfilled' && animeResult.value) {
       animeItems = animeResult.value.results
-      totalResults += animeResult.value.total
+      animePage++
+      animeHasMore = animeResult.value.hasNextPage
+    }
+
+    const failed = tmdbResult.status === 'rejected' || animeResult.status === 'rejected'
+    const succeeded = tmdbResult.status === 'fulfilled' && !!tmdbResult.value || animeResult.status === 'fulfilled' && !!animeResult.value
+    if (failed && !succeeded && searchItems.length === 0) {
+      showSearchError()
+      dom.loadMore?.classList.remove(CLASSES.HIDDEN)
+      return
     }
 
     if (!append) {
-      dom.resultsGrid!.innerHTML = ''
-      dom.resultsTitle!.textContent = `"${escHtml(query)}"`
-      dom.resultsCount!.textContent = `${totalResults.toLocaleString()} results`
+      dom.resultsTitle!.textContent = `"${query}"`
     }
 
-    const allItems = deduplicateSearchResults(tmdbItems, animeItems)
-
-    if (allItems.length > 60) {
-      createSearchVirtualScroller(dom.resultsGrid!, allItems, buildResultCard)
+    searchItems = deduplicateSearchResults([...searchItems.filter(i => i.media_type !== 'anime'), ...tmdbItems], [...searchItems.filter(i => i.media_type === 'anime') as NormalizedAnime[], ...animeItems])
+    state.searchPage = page
+    dom.resultsCount!.textContent = `${searchItems.length.toLocaleString()} results${failed ? ' · Some sources are unavailable' : ''}`
+    searchScroller?.destroy()
+    searchScroller = null
+    if (searchItems.length > 60) {
+      searchScroller = createSearchVirtualScroller(dom.resultsGrid!, searchItems, buildResultCard)
     } else {
-      allItems.forEach(item => {
-        dom.resultsGrid!.appendChild(buildResultCard(item, true))
-      })
+      dom.resultsGrid!.replaceChildren(...searchItems.map(item => buildResultCard(item, true)))
     }
-
-    const tmdbHasMore = tmdbResult.status === 'fulfilled' && tmdbResult.value.total_pages > page
-    const animeHasMore = animeResult.status === 'fulfilled' && animeResult.value.hasNextPage
-    dom.loadMore?.classList.toggle(CLASSES.HIDDEN, !tmdbHasMore && !animeHasMore && allItems.length === 0)
+    if (!searchItems.length) dom.resultsGrid!.textContent = 'No results found.'
+    dom.loadMore?.classList.toggle(CLASSES.HIDDEN, !tmdbHasMore && !animeHasMore)
 
   } catch (e) {
-    console.error(e)
-    showSearchError()
+    if (version === searchVersion) showSearchError()
+  } finally {
+    if (version === searchVersion) {
+      searchBusy = false
+      if (dom.loadMoreBtn) (dom.loadMoreBtn as HTMLButtonElement).disabled = false
+    }
   }
 }
 
 export function showSearchError(): void {
   dom.resultsGrid!.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:32px">Failed to load results. Please try again.</p>'
-}
-
-export async function searchAnime(query: string, page: number = 1, append: boolean = false): Promise<void> {
-  if (!append) {
-    const focusedEl = document.activeElement
-    onShowView('home')
-    if (focusedEl === dom.searchInput) {
-      requestAnimationFrame(() => dom.searchInput?.focus({ preventScroll: true }))
-    }
-    dom.resultsGrid!.innerHTML = ''
-    for (let i = 0; i < SKELETON_COUNT_SEARCH; i++) {
-      dom.resultsGrid!.appendChild(buildSkeletonCard())
-    }
-    dom.searchResults?.classList.remove(CLASSES.HIDDEN)
-    dom.homeRows?.classList.add(CLASSES.HIDDEN)
-    dom.heroText?.classList.add(CLASSES.HIDDEN)
-  }
-
-  state.searchQuery = query
-  state.searchPage = page
-
-  try {
-    const result = await searchAnimeFromAnilist(query, page)
-    state.searchTotal = result.total
-
-    if (!append) {
-      dom.resultsGrid!.innerHTML = ''
-      dom.resultsTitle!.textContent = `"${escHtml(query)}"`
-      dom.resultsCount!.textContent = `${result.total.toLocaleString()} anime results`
-    }
-
-    result.results.forEach(item => {
-      dom.resultsGrid!.appendChild(buildResultCard(item, true))
-    })
-
-    dom.loadMore?.classList.toggle(CLASSES.HIDDEN, !result.hasNextPage || result.results.length === 0)
-
-  } catch (e) {
-    console.error(e)
-    showSearchError()
-  }
 }

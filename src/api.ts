@@ -2,37 +2,20 @@
 // API LAYER — TMDB calls with caching
 // ═══════════════════════════════════════
 
-import type { CacheItem } from './types.js'
-import { TMDB_BASE, TMDB_TOKEN, CACHE_TTL, CACHE_KEY } from './constants.js'
+import { TMDB_BASE, TMDB_TOKEN, CACHE_KEY } from './constants.js'
+import { readCache, writeCache, clearCachePrefix } from './cache.js'
 
 // ── Cache helpers ─────────────────────
 export function getCached<T = unknown>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(`${CACHE_KEY}_${key}`)
-    if (!raw) return null
-    const { data, expires }: CacheItem<T> = JSON.parse(raw)
-    if (Date.now() > expires) {
-      localStorage.removeItem(`${CACHE_KEY}_${key}`)
-      return null
-    }
-    return data
-  } catch {
-    return null
-  }
+  return readCache<T>(CACHE_KEY, key)
 }
 
 export function setCache(key: string, data: unknown): void {
-  try {
-    const item: CacheItem = { data, expires: Date.now() + CACHE_TTL }
-    localStorage.setItem(`${CACHE_KEY}_${key}`, JSON.stringify(item))
-  } catch {
-    // quota exceeded - silently fail
-  }
+  writeCache(CACHE_KEY, key, data)
 }
 
 export function clearCache(): void {
-  const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY))
-  keys.forEach(k => localStorage.removeItem(k))
+  clearCachePrefix(CACHE_KEY)
 }
 
 // ── Token validation ──────────────────

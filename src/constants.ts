@@ -158,16 +158,21 @@ export const CLASSES = {
 // HOME ROWS CONFIG (order shuffled on load)
 // ═══════════════════════════════════════
 export const HOME_ROWS: ReadonlyArray<HomeRowConfig> = [
-  { title: 'Top Rated Series', path: '/tv/top_rated' },
-  { title: 'Top Rated Movies', path: '/movie/top_rated' },
-  { title: 'Sci-Fi & Fantasy', path: '/discover/movie?with_genres=878,14' },
-  { title: 'Drama', path: '/discover/movie?with_genres=18' },
-  { title: 'Comedy', path: '/discover/movie?with_genres=35' },
-  { title: 'Thriller & Mystery', path: '/discover/movie?with_genres=53,9648' },
-  { title: 'Documentaries', path: '/discover/movie?with_genres=99' },
-  { title: 'Animation', path: '/discover/movie?with_genres=16' },
-  { title: 'Action & Adventure', path: '/discover/movie?with_genres=28,12' },
-  { title: 'Horror', path: '/discover/movie?with_genres=27' },
-  { title: 'Trending Now', path: '/trending/all/day' },
-  { title: 'Popular Movies', path: '/movie/popular' },
+  { id: 'top-series', title: 'Top Rated Series', path: '/tv/top_rated' },
+  { id: 'top-movies', title: 'Top Rated Movies', path: '/movie/top_rated' },
+  { id: 'sci-fi-fantasy', title: 'Sci-Fi & Fantasy', path: '/discover/movie?with_genres=878,14' },
+  { id: 'drama', title: 'Drama', path: '/discover/movie?with_genres=18' },
+  { id: 'comedy', title: 'Comedy', path: '/discover/movie?with_genres=35' },
+  { id: 'thriller-mystery', title: 'Thriller & Mystery', path: '/discover/movie?with_genres=53,9648' },
+  { id: 'documentaries', title: 'Documentaries', path: '/discover/movie?with_genres=99' },
+  { id: 'animation', title: 'Animation', path: '/discover/movie?with_genres=16' },
+  { id: 'action-adventure', title: 'Action & Adventure', path: '/discover/movie?with_genres=28,12' },
+  { id: 'horror', title: 'Horror', path: '/discover/movie?with_genres=27' },
+  { id: 'trending', title: 'Trending Now', path: '/trending/all/day' },
+  { id: 'popular-movies', title: 'Popular Movies', path: '/movie/popular' },
+] as const
+
+export const ANIME_ROWS = [
+  { id: 'trending-anime', title: 'Trending Anime' },
+  { id: 'popular-anime', title: 'Popular Anime' },
 ] as const

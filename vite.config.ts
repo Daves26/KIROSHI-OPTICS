@@ -17,8 +17,11 @@ export default defineConfig({
         short_name: 'KIROSHI',
         description: 'See the Unseen - Movie & Series Catalog',
         theme_color: '#0D9488',
+        background_color: '#09090B',
+        start_url: '/',
+        display: 'standalone',
         icons: [
-          { src: '/icons/kiroshi_zen_logo.svg', sizes: '512x512', type: 'image/svg+xml' }
+          { src: '/icons/kiroshi_zen_logo.svg', sizes: 'any', type: 'image/svg+xml' }
         ]
       },
       workbox: {
@@ -28,11 +31,6 @@ export default defineConfig({
             urlPattern: /^https:\/\/api\.themoviedb\.org/,
             handler: 'NetworkFirst',
             options: { cacheName: 'tmdb', expiration: { maxEntries: 100, maxAgeSeconds: 86400 } }
-          },
-          {
-            urlPattern: /^https:\/\/graphql\.anilist\.co/,
-            handler: 'NetworkFirst',
-            options: { cacheName: 'anilist', expiration: { maxEntries: 100, maxAgeSeconds: 86400 } }
           },
           {
             urlPattern: /fonts\.(googleapis|gstatic)\.com/,

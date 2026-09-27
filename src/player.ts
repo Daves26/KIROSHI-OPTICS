@@ -4,7 +4,7 @@
 
 import type { ViewName, ContinueWatchingItem } from './types.js'
 import { SOURCES } from './constants.js'
-import { state, getActiveSource, setActiveSource, saveContinueWatching, getContinueWatching, setLastSourceForType, getLastSourceForType } from './state.js'
+import { state, getActiveSource, setActiveSource, saveContinueWatching, setLastSourceForType, getLastSourceForType } from './state.js'
 import { showToast } from './toast.js'
 import { setPlayerTitle } from './router.js'
 
@@ -16,6 +16,22 @@ let nextEpBtn: HTMLButtonElement
 let playerBackText: HTMLElement
 let serverSelect: HTMLSelectElement
 let onShowView: (name: ViewName, onPlayerExit?: () => void) => void
+let loadTimer: ReturnType<typeof setTimeout> | null = null
+
+export function cancelPendingPlayback(): void {
+  if (loadTimer) clearTimeout(loadTimer)
+  loadTimer = null
+}
+
+function loadFrame(url: string): void {
+  cancelPendingPlayback()
+  playerFrame.src = ''
+  onShowView('player')
+  loadTimer = setTimeout(() => {
+    playerFrame.src = url
+    loadTimer = null
+  }, 100)
+}
 
 export interface PlayerDom {
   playerFrame: HTMLIFrameElement
@@ -85,11 +101,7 @@ export function playEpisode(idx: number, title: string | null = null): void {
   playerTitle.textContent = `T${state.currentSeason} E${ep.episode_number} – ${ep.name}`
 
   // Clear iframe before loading new source
-  playerFrame.src = ''
-  setTimeout(() => {
-    playerFrame.src = url
-    onShowView('player')
-  }, 100)
+  loadFrame(url)
 
   // Show episode navigation
   prevEpBtn.style.display = ''
@@ -111,14 +123,11 @@ export function playEpisode(idx: number, title: string | null = null): void {
     poster_path: state.currentPosterPath,
     season: state.currentSeason!,
     episode: ep.episode_number,
-    progress: Math.round((ep.episode_number / state.currentEpisodes.length) * 100),
-    completed: ep.episode_number === state.currentEpisodes.length,
   } as ContinueWatchingItem)
 
   // Filter source dropdown: show all sources for TV content
   if (window._populateSourceDropdown) window._populateSourceDropdown(false)
 
-  onShowView('player')
 }
 
 // ── Play Movie ────────────────────────
@@ -161,18 +170,13 @@ export function playMovie(id: number, title: string): void {
     media_type: 'movie',
     title,
     poster_path: state.currentPosterPath,
-    progress: 10,
   } as ContinueWatchingItem)
 
   // Filter source dropdown: show all sources for movies
   if (window._populateSourceDropdown) window._populateSourceDropdown(false)
 
   // Clear iframe before loading
-  playerFrame.src = ''
-  setTimeout(() => {
-    playerFrame.src = url
-    onShowView('player')
-  }, 100)
+  loadFrame(url)
 }
 
 // ── Play Anime ────────────────────────
@@ -217,11 +221,7 @@ export function playAnime(idx: number, title: string | null = null): void {
   playerTitle.textContent = `Episode ${epNum}`
 
   // Clear iframe before loading
-  playerFrame.src = ''
-  setTimeout(() => {
-    playerFrame.src = url
-    onShowView('player')
-  }, 100)
+  loadFrame(url)
 
   // Show episode navigation
   prevEpBtn.style.display = ''
@@ -242,14 +242,11 @@ export function playAnime(idx: number, title: string | null = null): void {
     title: epTitle,
     poster_path: state.currentPosterPath,
     episode: epNum,
-    progress: Math.round((epNum / totalEps) * 100),
-    completed: epNum === totalEps,
   } as ContinueWatchingItem)
 
   // Filter source dropdown: show only anime-compatible sources
   if (window._populateSourceDropdown) window._populateSourceDropdown(true)
 
-  onShowView('player')
 }
 
 // ── Source switching ──────────────────
@@ -278,7 +275,7 @@ export function changeSource(newKey: string): void {
   // Save this source preference for the current series/anime
   if (state.currentAnimeId !== null) {
     setLastSourceForType('anime', newKey, state.currentAnimeId)
-  } else if (state.currentSerieId !== null) {
+  } else if (state.currentSerieId !== null && state.currentSerieType === 'tv') {
     setLastSourceForType('tv', newKey, state.currentSerieId)
   } else {
     // For movies, use the existing global preference
@@ -315,8 +312,10 @@ export function changeSource(newKey: string): void {
   }
   
   // Load new source
-  setTimeout(() => {
+  cancelPendingPlayback()
+  loadTimer = setTimeout(() => {
     playerFrame.src = url!
+    loadTimer = null
   }, 100)
 
   // Sync dropdown to reflect the new source
@@ -363,7 +362,7 @@ export function tryNextSource(): void {
         // Save this source preference for the current series/anime
         if (state.currentAnimeId !== null) {
           setLastSourceForType('anime', nextKey, state.currentAnimeId)
-        } else if (state.currentSerieId !== null) {
+        } else if (state.currentSerieId !== null && state.currentSerieType === 'tv') {
           setLastSourceForType('tv', nextKey, state.currentSerieId)
         } else {
           // For movies, use the existing global preference
@@ -395,8 +394,10 @@ export function tryNextSource(): void {
       
       // Clear iframe and reload
       playerFrame.src = ''
-      setTimeout(() => {
+      cancelPendingPlayback()
+      loadTimer = setTimeout(() => {
         playerFrame.src = url!
+        loadTimer = null
       }, 100)
 
       // Sync dropdown to reflect the new source
@@ -421,42 +422,8 @@ export function prevEpisode(): void {
 
 export function nextEpisode(): void {
   if (state.currentEpIndex !== null && state.currentEpIndex < state.currentEpisodes.length - 1) {
-    markCurrentAsCompleted()
     playEpisode(state.currentEpIndex + 1)
   } else if (state.currentAnimeEpIndex !== null && state.currentAnimeEpIndex < state.currentAnimeEpisodes.length - 1) {
-    markCurrentAnimeAsCompleted()
     playAnime(state.currentAnimeEpIndex + 1)
-  }
-}
-
-function markCurrentAsCompleted(): void {
-  if (state.currentEpIndex === null || !state.currentEpisodes[state.currentEpIndex]) return
-
-  const ep = state.currentEpisodes[state.currentEpIndex]
-  const existing = getContinueWatching()[0]
-
-  if (existing && existing.id === `tv-${state.currentSerieId}` && !existing.completed) {
-    saveContinueWatching({
-      ...existing,
-      episode: ep.episode_number,
-      progress: 100,
-      completed: true,
-    })
-  }
-}
-
-function markCurrentAnimeAsCompleted(): void {
-  if (state.currentAnimeEpIndex === null) return
-
-  const epNum = state.currentAnimeEpIndex + 1
-  const existing = getContinueWatching()[0]
-
-  if (existing && existing.id === `anime-${state.currentAnimeId}` && !existing.completed) {
-    saveContinueWatching({
-      ...existing,
-      episode: epNum,
-      progress: 100,
-      completed: true,
-    })
   }
 }

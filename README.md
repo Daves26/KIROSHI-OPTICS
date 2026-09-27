@@ -5,7 +5,6 @@
 ![KIROSHI OPTICS](https://img.shields.io/badge/Status-Production_Ready-success)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue)
 ![Vite](https://img.shields.io/badge/Vite-8.0-purple)
-![License](https://img.shields.io/badge/License-MIT-green)
 
 **A sleek movie and series streaming catalog powered by TMDB and AniList**
 
@@ -19,10 +18,11 @@
 
 - 🎬 **TMDB Catalog** — Browse movies and series by genre, trending, top rated, and popular
 - 🎌 **Anime Integration** — Full anime support via AniList API with trending and popular rows
+- 📚 **Explore Categories** — Open any catalog row in its own shareable view and keep browsing with infinite scroll
 - 🔍 **Unified Search** — Search across TMDB and AniList simultaneously with deduplication
-- 📺 **Multi-Source Player** — 10+ video sources (VidEasy, VidSrc, VidLink, etc.) with fallback
+- 📺 **Multi-Source Player** — selectable third-party embed sources
 - ❤️ **Watchlist** — Save your favorite movies, series, and anime to a personal watchlist
-- ⏯️ **Continue Watching** — Track your progress and resume where you left off
+- ⏯️ **Continue Watching** — Reopen the last selected title or episode (embedded players do not expose playback position)
 - 🎨 **Liquid Glass UI** — Beautiful glassmorphic design with smooth animations
 - 🌓 **Theme Toggle** — Switch between dark and light themes
 - 📱 **Responsive** — Works on desktop, tablet, and mobile with adaptive layouts
@@ -31,9 +31,9 @@
 - 🌙 **Dark by Default** — Sleek dark theme with ambient background orbs
 - ♿ **Accessible** — ARIA labels, skip-to-content link, focus management
 - 📡 **Offline-Ready** — Service Worker with intelligent caching strategies
-- 🚀 **Performance** — Lazy-loaded rows via IntersectionObserver, image prefetching, memoized renders, virtual scrolling, code splitting
+- 🚀 **Performance** — Lazy-loaded rows via IntersectionObserver, image prefetching, virtualized search results, code splitting
 - 🧪 **Type-Safe** — Full TypeScript with strict mode enabled
-- 🧪 **Tested** — Unit tests for core functionality (API, state, memoization)
+- 🧪 **Tested** — Automated tests for API, state, memoization, search and routes
 - ⚡ **Error Handling** — Comprehensive error handling and reporting system
 - 🔄 **Code Splitting** — Lazy-loaded chunks for optimal performance
 
@@ -46,14 +46,14 @@
 | **Testing** | [Vitest](https://vitest.dev/) + [@testing-library/dom](https://testing-library.com/) + [happy-dom](https://github.com/capricorn86/happy-dom) |
 | **APIs** | [TMDB API](https://www.themoviedb.org/documentation/api), [AniList GraphQL](https://anilist.gitbook.io/anilist/apiv2/) |
 | **Video Sources** | VidEasy, MoviesAPI, VidSrc, VidRock, 111Movies, VidNest, VidLink, RiveStream, and more |
-| **Caching** | localStorage + Service Worker (Cache API) + Web Workers |
+| **Caching** | Bounded localStorage cache + PWA Service Worker |
 | **Deployment** | [Vercel](https://vercel.com/) |
 
 ## 📦 Setup
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+ 
+- [Node.js](https://nodejs.org/) 20.19+ or 22.12+
 - npm or pnpm
 
 ### Installation
@@ -91,7 +91,10 @@ npm run build
 npm run preview
 
 # Run tests
-npm test
+npm run test:run
+
+# Check types
+npm run typecheck
 
 # Run tests with coverage
 npm run test:coverage
@@ -104,11 +107,13 @@ KIROSHI-OPTICS/
 ├── src/
 │   ├── app.ts              # Main entry point, bootstraps the app
 │   ├── api.ts              # TMDB API layer with caching & retry
+│   ├── categories.ts       # Category registry and paginated TMDB/AniList requests
 │   ├── api.test.ts         # Tests for API layer
 │   ├── anilist.ts          # AniList GraphQL queries & normalization
 │   ├── views/              # Modular view components
 │   │   ├── index.ts        # View exports aggregator
 │   │   ├── home.ts         # Home view with lazy-loaded rows
+│   │   ├── category.ts     # Category grid, infinite scroll and retry controls
 │   │   ├── search.ts       # Search view with debounced queries
 │   │   ├── detail.ts       # Movie/Series/Anime detail view
 │   │   ├── episodes.ts     # Episode list view
@@ -122,21 +127,19 @@ KIROSHI-OPTICS/
 │   ├── router.ts           # View transitions & navigation
 │   ├── state.ts            # App state + localStorage persistence
 │   ├── state.test.ts       # Tests for state management
+│   ├── router.test.ts      # Tests for hash routes
 │   ├── constants.ts        # Configuration constants & video sources
 │   ├── memo.ts             # LRU memoization for expensive renders
 │   ├── memo.test.ts        # Tests for memoization
 │   ├── toast.ts            # Toast notification system
-│   ├── sw.ts               # Service Worker (cache strategies)
-│   ├── cacheManager.ts     # Web Worker cache manager
-│   ├── cache.worker.ts     # Cache worker for off-thread operations
+│   ├── cache.ts            # Bounded shared API cache
 │   ├── virtualScroller.ts  # Virtual scrolling for large lists
 │   ├── cleanup.ts          # Resource cleanup utilities
 │   ├── errorHandler.ts     # Error handling & reporting
 │   ├── posterPlaceholder.ts # Poster placeholder generation
-│   ├── videoLinks.json     # Video source configuration
 │   └── types.ts            # TypeScript type definitions
-├── public/                  # Static assets (manifest, icons, etc.)
-├── docs/                    # Additional documentation
+├── public/                  # Static assets and icons
+├── .github/workflows/ci.yml # Typecheck, tests and build
 ├── index.html               # Main HTML with SEO & structured data
 ├── style.css                # Liquid Glass UI styles
 ├── vitest.config.ts         # Vitest configuration
@@ -172,9 +175,13 @@ Contributions are welcome! Here's how you can help:
 - Update documentation if needed
 - Keep PRs focused and concise
 
+### Local data and navigation
+
+Watchlist entries are stored in your browser and are keyed by catalog, media type and ID. Older watchlists are migrated automatically. Shared links support `#/category/{id}`, `#/movie/{id}`, `#/tv/{id}`, `#/tv/{id}/season/{number}`, `#/anime/{id}` and `#/watchlist`. Each catalog row (except Continue Watching) has a View more link that opens a paginated grid. Scroll to load more automatically or use the Load more button; returning from a title restores the category position. Continue Watching saves the selected episode, not playback time inside third-party players.
+
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+See the repository for licensing information.
 
 ## 🙏 Acknowledgments
 

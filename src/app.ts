@@ -8,7 +8,7 @@ import type { ViewName, ViewRefs, DomRefs } from './types.js'
 import { SOURCES, ROW_OBSERVER_MARGIN } from './constants.js'
 import { validateToken, clearCache } from './api.js'
 import { state, getActiveSource, setActiveSource } from './state.js'
-import { initRouter, showView, savePlayerSrc, getLastPlayerSrc } from './router.js'
+import { initRouter, showView as displayView, savePlayerSrc, getLastPlayerSrc, parseRoute, routeForView } from './router.js'
 import {
   initPlayer,
   playEpisode,
@@ -16,14 +16,20 @@ import {
   changeSource,
   prevEpisode,
   nextEpisode,
+  cancelPendingPlayback,
 } from './player.js'
 import {
   initViews,
   loadHomeRows,
+  initCategoryView,
+  openCategory,
+  suspendCategory,
+  getCurrentCategoryId,
   setupSearch,
   openFavs,
   goHome,
   openDetail,
+  cancelDetailRequest,
   openAnime,
   openAnimeEpisodes,
   openSeason,
@@ -76,6 +82,7 @@ if (!validateToken()) {
 // ── DOM refs ──────────────────────────
 const views: ViewRefs = {
   home: document.getElementById('homeView')!,
+  category: document.getElementById('categoryView')!,
   detail: document.getElementById('detailView')!,
   episodes: document.getElementById('episodesView')!,
   player: document.getElementById('playerView')!,
@@ -84,6 +91,11 @@ const views: ViewRefs = {
 
 const domRefs: DomRefs = {
   homeRows: document.getElementById('homeRows')!,
+  categoryTitle: document.getElementById('categoryTitle')!,
+  categoryGrid: document.getElementById('categoryGrid')!,
+  categoryStatus: document.getElementById('categoryStatus')!,
+  categoryMore: document.getElementById('categoryMore')! as HTMLButtonElement,
+  categorySentinel: document.getElementById('categorySentinel')!,
   heroText: document.querySelector('.hero-text'),
   searchInput: document.getElementById('searchInput')! as HTMLInputElement,
   clearBtn: document.getElementById('clearBtn')!,
@@ -111,6 +123,24 @@ const domRefs: DomRefs = {
 
 // ── Initialize router ─────────────────
 initRouter(views)
+let handlingRoute = false
+let categoryOriginId: string | null = null
+function showView(name: ViewName, onPlayerExit?: () => void): void {
+  const current = Object.entries(views).find(([, el]) => el.classList.contains('active'))?.[0]
+  if (current === 'detail' && name !== 'detail') cancelDetailRequest()
+  if (current === 'category' && name !== 'category') {
+    if (name === 'detail') categoryOriginId = getCurrentCategoryId()
+    suspendCategory()
+  } else if (name === 'detail' && current !== 'detail' && current !== 'player' && current !== 'episodes') {
+    categoryOriginId = null
+  }
+  if (name === 'home') categoryOriginId = null
+  if (name !== 'player') cancelPendingPlayback()
+  displayView(name, onPlayerExit)
+  if (handlingRoute || (name === 'home' && getIsSearchTrackingActive())) return
+  const route = routeForView(name, state)
+  if (route && window.location.hash !== route) history.pushState(null, '', route)
+}
 
 // ── IntersectionObserver for lazy rows ─
 const rowObserver = new IntersectionObserver((entries) => {
@@ -136,12 +166,14 @@ initViews(domRefs, {
   onShowView: (name: ViewName) => showView(name, () => { domRefs.playerFrame.src = '' }),
   onGoHome: goHome,
   onOpenDetail: openDetail,
+  onOpenCategory: openCategory,
   onOpenSeason: openSeason,
   onOpenAnime: openAnime,
   onOpenAnimeEpisode: (idx: number, title: string) => playAnime(idx, title),
   onOpenAnimeEpisodes: (title: string) => openAnimeEpisodes(title),
   onLoadMore: (idx: number, title: string) => playEpisode(idx, title),
 })
+initCategoryView()
 
 // ── Setup source selector ─────────────
 function populateSourceDropdown(showAnimeOnly: boolean = false): void {
@@ -238,6 +270,8 @@ document.getElementById('favsBtn')!.addEventListener('click', () => {
     } else if (previousViewBeforeFavs === 'player') {
       showView('player')
       domRefs.playerFrame.src = getLastPlayerSrc() || domRefs.playerFrame.src
+    } else if (previousViewBeforeFavs === 'category' && getCurrentCategoryId()) {
+      openCategory(getCurrentCategoryId()!)
     } else if (previousViewBeforeFavs) {
       showView(previousViewBeforeFavs)
     } else {
@@ -259,9 +293,14 @@ document.getElementById('favsBtn')!.addEventListener('click', () => {
 })
 
 document.getElementById('backToHomeFavs')!.addEventListener('click', () => { goHome() })
+document.getElementById('backToHomeCategory')!.addEventListener('click', () => { goHome() })
+function backFromDetail(): void {
+  if (categoryOriginId) openCategory(categoryOriginId)
+  else goHome()
+}
 document.getElementById('backToHome')!.addEventListener('click', () => {
   domRefs.playerFrame.src = ''  // Stop video when going home
-  showView('home')
+  backFromDetail()
 })
 document.getElementById('backToSeasons')!.addEventListener('click', () => showView('detail'))
 document.getElementById('backToEpisodes')!.addEventListener('click', () => {
@@ -386,6 +425,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
       } else if (views.episodes.classList.contains('active')) {
         showView('detail')
       } else if (views.detail.classList.contains('active')) {
+        backFromDetail()
+      } else if (views.category.classList.contains('active')) {
         goHome()
       } else if (views.favs.classList.contains('active')) {
         goHome()
@@ -434,50 +475,40 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 // DEEP LINKING (Hash-based routing)
 // ═══════════════════════════════════════
 
-function handleRoute(): void {
-  const hash = window.location.hash.slice(1)
-  if (!hash) return
-
-  // Patterns: #/movie/123, #/tv/456, #/tv/456/season/2, #/anime/789
-  const movieMatch = hash.match(/^\/movie\/(\d+)/)
-  const tvMatch = hash.match(/^\/tv\/(\d+)/)
-  const seasonMatch = hash.match(/^\/tv\/(\d+)\/season\/(\d+)/)
-  const animeMatch = hash.match(/^\/anime\/(\d+)/)
-
-  if (animeMatch) {
-    openAnime(Number(animeMatch[1]))
-  } else if (seasonMatch) {
-    const [, id, season] = seasonMatch
-    // Use Promise-based approach: wait for detail view to be ready
-    const detailReady = new Promise<void>((resolve) => {
-      const checkState = () => {
-        if (state.currentSerieId === Number(id) && state.currentSerieType === 'tv') {
-          resolve()
-        }
+let routeVersion = 0
+async function handleRoute(): Promise<void> {
+  // The skip-to-content anchor is an in-page accessibility link, not a view route.
+  if (window.location.hash === '#mainContent') return
+  const route = parseRoute(window.location.hash)
+  const version = ++routeVersion
+  handlingRoute = true
+  try {
+    if (route.kind === 'home') {
+      goHome()
+    } else if (route.kind === 'watchlist') {
+      openFavs()
+    } else if (route.kind === 'category') {
+      openCategory(route.id)
+    } else if (route.kind === 'anime') {
+      await openAnime(route.id)
+    } else if (route.kind === 'detail') {
+      await openDetail(route.id, route.type)
+      if (route.season && version === routeVersion && state.currentSerieId === route.id && state.currentSerieType === 'tv') {
+        await openSeason(route.season, state._currentTitle ?? domRefs.detailTitle.textContent ?? '')
       }
-      // Listen for the custom event emitted when detail loads
-      window.addEventListener('detailloaded', checkState, { once: true })
-      // Fallback: also check immediately in case it's already loaded
-      setTimeout(() => {
-        checkState()
-        // If still not resolved after a short delay, resolve anyway
-        setTimeout(resolve, 500)
-      }, 100)
-    })
-
-    openDetail(Number(id), 'tv')
-    detailReady.then(() => openSeason(Number(season), 'Loading...'))
-  } else if (tvMatch) {
-    openDetail(Number(tvMatch[1]), 'tv')
-  } else if (movieMatch) {
-    openDetail(Number(movieMatch[1]), 'movie')
+    } else {
+      history.replaceState(null, '', '#/')
+      goHome()
+    }
+  } finally {
+    if (version === routeVersion) handlingRoute = false
   }
 }
 
-window.addEventListener('hashchange', handleRoute)
+window.addEventListener('hashchange', () => { void handleRoute() })
 // Handle initial hash on load
 if (window.location.hash) {
-  setTimeout(handleRoute, 100)
+  void handleRoute()
 }
 
 // ═══════════════════════════════════════

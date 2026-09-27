@@ -1200,6 +1200,11 @@ html {
 
 .episode-item {
   display: flex;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   gap: 0;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -1559,6 +1564,32 @@ html {
 .row-nav-btns {
   display: flex;
   gap: 8px;
+}
+.row-header-actions { display: flex; align-items: center; gap: 16px; }
+.row-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+  font-size: 0.86rem;
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+}
+.row-more:hover { text-decoration: underline; }
+.row-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.category-view .detail-header { margin-bottom: 24px; }
+.category-title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2.4rem); font-weight: 500; }
+.category-grid { padding-bottom: 24px; }
+.category-status { min-height: 1.5em; color: var(--text-2); text-align: center; }
+.category-footer { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 0 56px; }
+.category-sentinel { width: 100%; height: 1px; pointer-events: none; }
+#categoryMore[hidden] { display: none; }
+@media (max-width: 480px) {
+  .row-header { gap: 8px; }
+  .row-title { min-width: 0; }
+  .row-more { font-size: 0.8rem; }
 }
 .nav-btn {
   background: var(--glass-bg);
@@ -3184,3 +3215,9 @@ body {
     border-top-color: var(--accent);
   }
 }
+.fav-btn:focus-visible, .remove-btn:focus-visible, .remove-watching-btn:focus-visible { opacity: 1; }
+.card-open { display: flex; flex: 1; flex-direction: column; color: inherit; text-decoration: none; border-radius: inherit; }
+.card-open:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+.season-card { color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.logo { border: 0; background: transparent; padding: 0; color: inherit; cursor: pointer; }

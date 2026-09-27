@@ -12,6 +12,7 @@ import type {
   NormalizedAnime,
   AniListDetailResponse,
 } from './types.js'
+import { readCache, writeCache, clearCachePrefix } from './cache.js'
 
 const ANILIST_API: string = 'https://graphql.anilist.co'
 
@@ -98,6 +99,7 @@ query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
       total
+      hasNextPage
     }
     media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
       ...MediaListFields
@@ -111,6 +113,7 @@ query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     pageInfo {
       total
+      hasNextPage
     }
     media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
       ...MediaListFields
@@ -199,36 +202,14 @@ query ($id: Int) {
 }`
 
 // Cache
-const CACHE_TTL: number = 1000 * 60 * 30 // 30 minutes
 const CACHE_KEY: string = 'kiroshi_anilist_cache'
 
-interface CacheItem<T = unknown> {
-  data: T
-  expires: number
-}
-
 function getCached<T = unknown>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(`${CACHE_KEY}_${key}`)
-    if (!raw) return null
-    const { data, expires }: CacheItem<T> = JSON.parse(raw)
-    if (Date.now() > expires) {
-      localStorage.removeItem(`${CACHE_KEY}_${key}`)
-      return null
-    }
-    return data
-  } catch {
-    return null
-  }
+  return readCache<T>(CACHE_KEY, key)
 }
 
 function setCache(key: string, data: unknown): void {
-  try {
-    const item: CacheItem = { data, expires: Date.now() + CACHE_TTL }
-    localStorage.setItem(`${CACHE_KEY}_${key}`, JSON.stringify(item))
-  } catch {
-    // quota exceeded
-  }
+  writeCache(CACHE_KEY, key, data)
 }
 
 // API call helper with retry
@@ -341,13 +322,26 @@ export async function searchAnime(
 }
 
 export async function getTrendingAnime(page: number = 1, perPage: number = 20): Promise<NormalizedAnime[]> {
-  const data = await anilistQuery<{ Page: { media: AniListMedia[] } }>(TRENDING_QUERY, { page, perPage })
-  return data.Page.media.map(normalizeAnime)
+  return (await getTrendingAnimePage(page, perPage)).results
 }
 
 export async function getPopularAnime(page: number = 1, perPage: number = 20): Promise<NormalizedAnime[]> {
-  const data = await anilistQuery<{ Page: { media: AniListMedia[] } }>(POPULAR_QUERY, { page, perPage })
-  return data.Page.media.map(normalizeAnime)
+  return (await getPopularAnimePage(page, perPage)).results
+}
+
+export interface AnimePage {
+  results: NormalizedAnime[]
+  hasNextPage: boolean
+}
+
+export async function getTrendingAnimePage(page: number = 1, perPage: number = 20): Promise<AnimePage> {
+  const data = await anilistQuery<{ Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] } }>(TRENDING_QUERY, { page, perPage })
+  return { results: data.Page.media.map(normalizeAnime), hasNextPage: data.Page.pageInfo.hasNextPage }
+}
+
+export async function getPopularAnimePage(page: number = 1, perPage: number = 20): Promise<AnimePage> {
+  const data = await anilistQuery<{ Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] } }>(POPULAR_QUERY, { page, perPage })
+  return { results: data.Page.media.map(normalizeAnime), hasNextPage: data.Page.pageInfo.hasNextPage }
 }
 
 export async function getTopRatedAnime(page: number = 1, perPage: number = 20): Promise<NormalizedAnime[]> {
@@ -481,6 +475,5 @@ function stripHtml(html: string): string {
 
 // Clear AniList cache
 export function clearAnilistCache(): void {
-  const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY))
-  keys.forEach(k => localStorage.removeItem(k))
+  clearCachePrefix(CACHE_KEY)
 }

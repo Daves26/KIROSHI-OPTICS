@@ -1,6 +1,7 @@
 .env
 node_modules
 dist
+coverage
 contexto_web.md
 .qwen
 temp

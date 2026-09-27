@@ -1,11 +1,11 @@
-import { CLASSES, HOME_ROWS, SKELETON_COUNT_HOME } from '../constants.js'
+import { ANIME_ROWS, CLASSES, HOME_ROWS, SKELETON_COUNT_HOME } from '../constants.js'
 import { tmdb } from '../api.js'
 import { getTrendingAnime, getPopularAnime } from '../anilist.js'
 import { getContinueWatching } from '../state.js'
 import type { NormalizedAnime, TmdbMedia, ContinueWatchingItem } from '../types.js'
 import { escHtml, throttle, shuffleArray } from './utils.js'
 import { buildSkeletonCard, prefetchImage } from './ui.js'
-import { dom, rowObserver, continueWatchingRow, setContinueWatchingRow } from './context.js'
+import { dom, rowObserver, continueWatchingRow, setContinueWatchingRow, onOpenCategory } from './context.js'
 import { buildResultCard, buildContinueWatchingCard } from './components.js'
 
 // ═══════════════════════════════════════
@@ -26,9 +26,9 @@ export async function loadHomeRows(): Promise<void> {
 
   const shuffledTmdb = shuffleArray([...HOME_ROWS])
   const [animeRow1, animeRow2, ...tmdbRows] = await Promise.all([
-    buildAnimeHomeRow('Trending Anime', () => getTrendingAnime(1, 20)),
-    buildAnimeHomeRow('Popular Anime', () => getPopularAnime(1, 20)),
-    ...shuffledTmdb.map(r => buildHomeRow(r.title, r.path)),
+    buildAnimeHomeRow(ANIME_ROWS[0].id, ANIME_ROWS[0].title, () => getTrendingAnime(1, 20)),
+    buildAnimeHomeRow(ANIME_ROWS[1].id, ANIME_ROWS[1].title, () => getPopularAnime(1, 20)),
+    ...shuffledTmdb.map(r => buildHomeRow(r.id, r.title, r.path)),
   ])
   const animeRows = [animeRow1, animeRow2]
 
@@ -107,14 +107,16 @@ export function refreshContinueWatchingRow(): void {
   }
 }
 
-async function buildHomeRow(title: string, path: string): Promise<HTMLElement> {
+async function buildHomeRow(id: string, title: string, path: string): Promise<HTMLElement> {
   const row = document.createElement('div')
   row.className = CLASSES.HOME_ROW
 
   row.innerHTML = `
     <div class="row-header">
       <h2 class="row-title">${escHtml(title)}</h2>
-      <div class="row-nav-btns">
+      <div class="row-header-actions">
+        <a class="row-more" href="#/category/${id}" aria-label="View more ${escHtml(title)}">View more</a>
+        <div class="row-nav-btns">
         <button class="nav-btn prev" aria-label="Previous">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -125,6 +127,7 @@ async function buildHomeRow(title: string, path: string): Promise<HTMLElement> {
             <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
+        </div>
       </div>
     </div>
     <div class="row-content"></div>
@@ -133,6 +136,10 @@ async function buildHomeRow(title: string, path: string): Promise<HTMLElement> {
   const contentEl = row.querySelector('.row-content') as HTMLElement
   const prevBtn = row.querySelector('.prev') as HTMLButtonElement
   const nextBtn = row.querySelector('.next') as HTMLButtonElement
+  row.querySelector('.row-more')?.addEventListener('click', e => {
+    e.preventDefault()
+    onOpenCategory(id)
+  })
 
   ;(row as any)._loadRowData = async () => {
     for (let i = 0; i < SKELETON_COUNT_HOME; i++) {
@@ -140,8 +147,8 @@ async function buildHomeRow(title: string, path: string): Promise<HTMLElement> {
     }
 
     try {
-      const data = await tmdb<any>(path)
-      const items = data.results.filter((r: TmdbMedia) => r.poster_path || r.backdrop_path)
+      const data = await tmdb<any>(path, { page: 1 })
+      const items = data.results.filter((r: TmdbMedia) => (r.media_type === 'movie' || r.media_type === 'tv' || !r.media_type) && (r.poster_path || r.backdrop_path))
 
       contentEl.innerHTML = ''
 
@@ -174,6 +181,7 @@ async function buildHomeRow(title: string, path: string): Promise<HTMLElement> {
 }
 
 async function buildAnimeHomeRow(
+  id: string,
   title: string,
   fetchFn: () => Promise<NormalizedAnime[]>
 ): Promise<HTMLElement> {
@@ -183,7 +191,9 @@ async function buildAnimeHomeRow(
   row.innerHTML = `
     <div class="row-header">
       <h2 class="row-title">${escHtml(title)}</h2>
-      <div class="row-nav-btns">
+      <div class="row-header-actions">
+        <a class="row-more" href="#/category/${id}" aria-label="View more ${escHtml(title)}">View more</a>
+        <div class="row-nav-btns">
         <button class="nav-btn prev" aria-label="Previous">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -194,6 +204,7 @@ async function buildAnimeHomeRow(
             <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
+        </div>
       </div>
     </div>
     <div class="row-content"></div>
@@ -202,6 +213,10 @@ async function buildAnimeHomeRow(
   const contentEl = row.querySelector('.row-content') as HTMLElement
   const prevBtn = row.querySelector('.prev') as HTMLButtonElement
   const nextBtn = row.querySelector('.next') as HTMLButtonElement
+  row.querySelector('.row-more')?.addEventListener('click', e => {
+    e.preventDefault()
+    onOpenCategory(id)
+  })
 
   ;(row as any)._loadRowData = async () => {
     for (let i = 0; i < SKELETON_COUNT_HOME; i++) {

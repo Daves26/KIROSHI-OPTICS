@@ -21,6 +21,7 @@ export const state: AppState = {
   searchPage: 1,
   searchQuery: '',
   searchTotal: 0,
+  currentCategoryId: null,
   currentPosterPath: null, // Store poster for continue watching
   // Anime specific
   currentAnimeId: null,
@@ -97,18 +98,38 @@ export function setLastSourceForType(type: 'movie' | 'anime' | 'tv', sourceKey: 
 }
 
 // ── Favorites Management ──────────────
+export function mediaKey(item: Pick<MediaItem, 'id' | 'media_type'>): string {
+  return `${item.media_type === 'anime' ? 'anilist' : 'tmdb'}:${item.media_type}:${item.id}`
+}
+
 export function getFavorites(): FavoritesMap {
-  return JSON.parse(localStorage.getItem(LS_FAVS_KEY) || '{}') as FavoritesMap
+  try {
+    const stored = JSON.parse(localStorage.getItem(LS_FAVS_KEY) || '{}') as FavoritesMap
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
+    const migrated: FavoritesMap = {}
+    let changed = false
+    for (const [key, item] of Object.entries(stored)) {
+      if (!item || !Number.isInteger(item.id) || !['movie', 'tv', 'anime'].includes(item.media_type)) continue
+      const newKey = mediaKey(item)
+      migrated[newKey] = item
+      if (key !== newKey) changed = true
+    }
+    if (changed) localStorage.setItem(LS_FAVS_KEY, JSON.stringify(migrated))
+    return migrated
+  } catch {
+    return {}
+  }
 }
 
 export function toggleFavorite(item: MediaItem): boolean {
   const favs = getFavorites()
-  const wasFav = !!favs[item.id]
+  const key = mediaKey(item)
+  const wasFav = !!favs[key]
 
   if (wasFav) {
-    delete favs[item.id]
+    delete favs[key]
   } else {
-    favs[item.id] = item
+    favs[key] = item
   }
 
   localStorage.setItem(LS_FAVS_KEY, JSON.stringify(favs))
@@ -119,14 +140,15 @@ export function toggleFavorite(item: MediaItem): boolean {
   return !wasFav
 }
 
-export function isFavorite(id: number): boolean {
-  return !!getFavorites()[id]
+export function isFavorite(item: Pick<MediaItem, 'id' | 'media_type'>): boolean {
+  return !!getFavorites()[mediaKey(item)]
 }
 
-export function removeFromFavorites(id: number): boolean {
+export function removeFromFavorites(item: Pick<MediaItem, 'id' | 'media_type'>): boolean {
   const favs = getFavorites()
-  if (favs[id]) {
-    delete favs[id]
+  const key = mediaKey(item)
+  if (favs[key]) {
+    delete favs[key]
     localStorage.setItem(LS_FAVS_KEY, JSON.stringify(favs))
     window.dispatchEvent(new Event('storage'))
     return true

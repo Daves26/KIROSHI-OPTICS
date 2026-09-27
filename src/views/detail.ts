@@ -14,8 +14,14 @@ import { setDetailTitle, updateJsonLd } from '../router.js'
 // ═══════════════════════════════════════
 // ANIME DETAIL VIEW
 // ═══════════════════════════════════════
+let detailRequest = 0
+
+export function cancelDetailRequest(): void {
+  detailRequest++
+}
 
 export async function openAnime(id: number): Promise<void> {
+  const request = ++detailRequest
   state.currentAnimeId = id
   state.currentSerieId = null
   state.currentSerieType = null
@@ -30,9 +36,11 @@ export async function openAnime(id: number): Promise<void> {
 
   try {
     const data = await getAnimeDetail(id)
+    if (request !== detailRequest) return
 
     // Fade out skeleton, then show real content
     await new Promise(resolve => setTimeout(resolve, 150))
+    if (request !== detailRequest) return
     dom.detailContent!.classList.remove('loading')
     showAnimeDetail(data)
 
@@ -47,6 +55,7 @@ export async function openAnime(id: number): Promise<void> {
       })
     }
   } catch (e: any) {
+    if (request !== detailRequest) return
     console.error(e)
     dom.detailContent!.classList.remove('loading')
     showDetailError(e)
@@ -98,7 +107,7 @@ export function showAnimeDetail(data: AniListDetailResponse): void {
           </button>
           ` : ''}
           <button class="btn-action fav-add-btn" id="favAnimeBtn">
-            ${isFavorite(data.id) ? '♥ Favorited' : '♥ Add to Watchlist'}
+            ${isFavorite({ id: data.id, media_type: 'anime' }) ? '♥ Favorited' : '♥ Add to Watchlist'}
           </button>
         </div>
       </div>
@@ -131,6 +140,7 @@ export function showAnimeDetail(data: AniListDetailResponse): void {
 // ═══════════════════════════════════════
 
 export async function openDetail(id: number, type: MediaType): Promise<void> {
+  const request = ++detailRequest
   state.currentSerieId = id
   state.currentSerieType = type === 'anime' ? null : type
   state.currentAnimeId = null
@@ -152,6 +162,7 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
       tmdb<any>(`/${type}/${id}/credits`),
       tmdb<any>(`/${type}/${id}/similar`),
     ])
+    if (request !== detailRequest) return
 
     state._castData = castData.cast?.slice(0, 12) || []
     state._similarData = similarData.results || []
@@ -175,6 +186,7 @@ export async function openDetail(id: number, type: MediaType): Promise<void> {
 
     window.dispatchEvent(new CustomEvent('detailloaded', { detail: { id, type } }))
   } catch (e: any) {
+    if (request !== detailRequest) return
     console.error(e)
     dom.detailContent!.classList.remove('loading')
     showDetailError(e)
@@ -222,7 +234,7 @@ export function showSeriesDetail(data: TmdbDetailResponse): void {
             Browse episodes
           </button>
           <button class="btn-action fav-add-btn" id="favSeriesBtn">
-            ${isFavorite(data.id) ? '♥ Favorited' : '♥ Add to Watchlist'}
+            ${isFavorite({ id: data.id, media_type: 'tv' }) ? '♥ Favorited' : '♥ Add to Watchlist'}
           </button>
         </div>
       </div>
@@ -265,7 +277,9 @@ export function showSeriesDetail(data: TmdbDetailResponse): void {
   const grid = document.getElementById('seasonsGrid')!
   seasons.forEach(s => {
     const poster = s.poster_path ? `${IMG_BASE}/w342${s.poster_path}` : null
-    const card = document.createElement('div')
+    const card = document.createElement('button')
+    card.type = 'button'
+    card.setAttribute('aria-label', `Open season ${s.season_number}`)
     card.className = CLASSES.SEASON_CARD
     card.innerHTML = `
       ${poster ? `<img src="${poster}" alt="T${s.season_number}" loading="lazy" />` : ''}
@@ -320,7 +334,7 @@ export function showMovieDetail(data: TmdbDetailResponse): void {
             Watch now
           </button>
           <button class="btn-action fav-add-btn" id="favMovieBtn">
-            ${isFavorite(data.id) ? '♥ Favorited' : '♥ Add to Watchlist'}
+            ${isFavorite({ id: data.id, media_type: 'movie' }) ? '♥ Favorited' : '♥ Add to Watchlist'}
           </button>
         </div>
       </div>

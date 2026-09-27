@@ -1,159 +1,96 @@
-// ═══════════════════════════════════════
-// VIRTUAL SCROLLER — Render only visible items
-// ═══════════════════════════════════════
-
-export interface VirtualScrollerOptions {
-  itemHeight: number;          // Height of each item (px)
-  containerHeight: number;     // Height of the container
-  bufferSize?: number;         // Extra items as buffer (default: 5)
-  gap?: number;                // Gap between items (px) (default: 0)
-}
-
+// Window-based virtualization for the responsive search results grid.
 export class VirtualScroller<T> {
   private items: T[]
-  private options: Required<VirtualScrollerOptions>
-  private scrollTop: number = 0
-  private container: HTMLElement
-  private renderFn: (item: T, index: number) => HTMLElement
-  private isScrolling = false
-  private rafId: number | null = null
+  private readonly container: HTMLElement
+  private readonly renderCard: (item: T) => HTMLElement
+  private readonly grid = document.createElement('div')
+  private readonly top = document.createElement('div')
+  private readonly bottom = document.createElement('div')
+  private readonly resizeObserver: ResizeObserver
+  private frame = 0
+  private rowHeight = 360
+  private columns = 1
+  private gap = 24
+  private readonly originalRowGap: string
+  private start = -1
+  private end = -1
 
-  constructor(
-    container: HTMLElement,
-    items: T[],
-    options: VirtualScrollerOptions,
-    renderFn: (item: T, index: number) => HTMLElement
-  ) {
+  constructor(container: HTMLElement, items: T[], renderCard: (item: T) => HTMLElement) {
     this.container = container
     this.items = items
-    this.options = {
-      bufferSize: 5,
-      gap: 0,
-      ...options
-    }
-    this.renderFn = renderFn
-    
-    this.setupScrollHandler()
+    this.renderCard = renderCard
+    this.originalRowGap = container.style.rowGap
+    this.gap = parseFloat(getComputedStyle(container).rowGap) || 0
+    // The outer grid contains only the two spacers and the inner grid.
+    container.style.rowGap = '0px'
+    this.grid.style.gridColumn = '1 / -1'
+    this.grid.style.display = 'grid'
+    this.top.style.gridColumn = '1 / -1'
+    this.bottom.style.gridColumn = '1 / -1'
+    container.replaceChildren(this.top, this.grid, this.bottom)
+    this.resizeObserver = new ResizeObserver(() => this.measure())
+    this.resizeObserver.observe(container)
+    window.addEventListener('scroll', this.schedule, { passive: true })
+    window.addEventListener('resize', this.measure)
+    this.measure()
   }
 
-  private setupScrollHandler(): void {
-    // Use passive listener for better performance
-    this.container.addEventListener('scroll', () => {
-      if (!this.isScrolling) {
-        this.isScrolling = true
-        this.rafId = requestAnimationFrame(() => {
-          this.onScroll()
-          this.isScrolling = false
-        })
-      }
-    }, { passive: true })
+  private measure = (): void => {
+    const styles = getComputedStyle(this.container)
+    this.columns = Math.max(1, styles.gridTemplateColumns.split(' ').filter(Boolean).length)
+    const width = (this.container.clientWidth - (this.columns - 1) * (parseFloat(styles.columnGap) || 0)) / this.columns
+    // Posters have a 2:3 aspect ratio; allow space for the metadata below.
+    this.rowHeight = width * 1.5 + (window.innerWidth < 640 ? 55 : 105) + this.gap
+    this.grid.style.gridTemplateColumns = styles.gridTemplateColumns
+    this.grid.style.gap = `${this.gap}px ${styles.columnGap}`
+    this.start = -1
+    this.schedule()
   }
 
-  private onScroll(): void {
-    this.scrollTop = this.container.scrollTop
-    this.render()
-  }
-
-  getVisibleRange(): { start: number; end: number; offsetY: number } {
-    const { itemHeight, containerHeight, bufferSize, gap } = this.options
-    const itemWithGap = itemHeight + gap
-    
-    const start = Math.floor(this.scrollTop / itemWithGap)
-    const visibleCount = Math.ceil(containerHeight / itemWithGap)
-    
-    return {
-      start: Math.max(0, start - bufferSize),
-      end: Math.min(this.items.length, start + visibleCount + bufferSize),
-      offsetY: Math.max(0, start - bufferSize) * itemWithGap
-    }
-  }
-
-  getTotalHeight(): number {
-    const { itemHeight, gap } = this.options
-    return this.items.length * (itemHeight + gap) - gap
+  private schedule = (): void => {
+    if (!this.frame) this.frame = requestAnimationFrame(() => {
+      this.frame = 0
+      this.render()
+    })
   }
 
   render(): void {
-    const { start, end, offsetY } = this.getVisibleRange()
-    
-    // Use DocumentFragment for batch DOM updates
-    const fragment = document.createDocumentFragment()
-    
-    // Create top spacer
-    const topSpacer = document.createElement('div')
-    topSpacer.style.height = `${offsetY}px`
-    topSpacer.style.flexShrink = '0'
-    fragment.appendChild(topSpacer)
-    
-    // Render only visible items
-    for (let i = start; i < end; i++) {
-      const item = this.items[i]
-      if (item !== undefined) {
-        const element = this.renderFn(item, i)
-        fragment.appendChild(element)
-      }
-    }
-    
-    // Create bottom spacer
-    const renderedHeight = (end - start) * (this.options.itemHeight + this.options.gap)
-    const remainingHeight = this.getTotalHeight() - offsetY - renderedHeight
-    if (remainingHeight > 0) {
-      const bottomSpacer = document.createElement('div')
-      bottomSpacer.style.height = `${remainingHeight}px`
-      bottomSpacer.style.flexShrink = '0'
-      fragment.appendChild(bottomSpacer)
-    }
-    
-    // Replace all children in one operation
-    this.container.replaceChildren(fragment)
+    const offset = this.container.getBoundingClientRect().top
+    const firstRow = Math.max(0, Math.floor((-offset - window.innerHeight) / this.rowHeight))
+    const lastRow = Math.min(Math.ceil(this.items.length / this.columns), Math.ceil((-offset + window.innerHeight * 2) / this.rowHeight))
+    const start = firstRow * this.columns
+    const end = Math.max(start, lastRow * this.columns)
+    if (start === this.start && end === this.end) return
+    this.start = start
+    this.end = end
+    this.top.style.height = `${firstRow * this.rowHeight}px`
+    this.bottom.style.height = `${Math.max(0, Math.ceil(this.items.length / this.columns) - lastRow) * this.rowHeight}px`
+    this.grid.replaceChildren(...this.items.slice(start, end).map(item => {
+      const card = this.renderCard(item)
+      card.style.minHeight = `${this.rowHeight - this.gap}px`
+      return card
+    }))
   }
 
-  /**
-   * Update items and re-render
-   */
-  updateItems(newItems: T[]): void {
-    this.items = newItems
-    this.render()
+  updateItems(items: T[]): void {
+    this.items = items
+    this.start = -1
+    this.schedule()
   }
 
-  /**
-   * Force re-render (e.g., after resize)
-   */
-  forceUpdate(): void {
-    this.render()
-  }
-
-  /**
-   * Destroy and cleanup
-   */
   destroy(): void {
-    if (this.rafId !== null) {
-      cancelAnimationFrame(this.rafId)
-    }
-    this.items = []
+    cancelAnimationFrame(this.frame)
+    this.resizeObserver.disconnect()
+    this.container.style.rowGap = this.originalRowGap
+    window.removeEventListener('scroll', this.schedule)
+    window.removeEventListener('resize', this.measure)
   }
 }
 
-/**
- * Create a virtual scroller for search results
- */
-export function createSearchVirtualScroller(
+export function createSearchVirtualScroller<T>(
   container: HTMLElement,
-  items: any[],
-  buildCardFn: (item: any, enablePrefetch: boolean) => HTMLElement
-): VirtualScroller<any> {
-  const itemHeight = 320 // card height + gap
-  const containerHeight = container.clientHeight || window.innerHeight * 0.7
-
-  return new VirtualScroller(
-    container,
-    items,
-    {
-      itemHeight,
-      containerHeight,
-      bufferSize: 8,
-      gap: 16
-    },
-    (item, _index) => buildCardFn(item, true)
-  )
+  items: T[],
+  buildCardFn: (item: T, enablePrefetch: boolean) => HTMLElement
+): VirtualScroller<T> {
+  return new VirtualScroller(container, items, item => buildCardFn(item, true))
 }

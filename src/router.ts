@@ -2,8 +2,9 @@
 // ROUTER — View transitions & navigation
 // ═══════════════════════════════════════
 
-import type { ViewName, ViewRefs, TmdbDetailResponse, NormalizedAnime, MediaType } from './types.js'
+import type { ViewName, ViewRefs, TmdbDetailResponse, NormalizedAnime, MediaType, AppState } from './types.js'
 import { CLASSES, TITLES } from './constants.js'
+import { getCategory } from './categories.js'
 
 // View references (injected by main)
 let views: ViewRefs = {} as ViewRefs
@@ -11,9 +12,44 @@ let views: ViewRefs = {} as ViewRefs
 // Track last dynamic title for restoration when navigating back from player
 let lastDetailTitle: string | null = null
 let lastEpisodesTitle: string | null = null
+let lastCategoryTitle: string | null = null
 
 // Track last player src to restore after watchlist/other overlays
 let lastPlayerSrc: string = ''
+
+export type Route =
+  | { kind: 'home' | 'watchlist' | 'invalid' }
+  | { kind: 'anime'; id: number }
+  | { kind: 'category'; id: string }
+  | { kind: 'detail'; type: 'movie' | 'tv'; id: number; season?: number }
+
+export function parseRoute(hash: string): Route {
+  if (!hash || hash === '#/') return { kind: 'home' }
+  if (hash === '#/watchlist') return { kind: 'watchlist' }
+  const category = /^#\/category\/([a-z0-9-]+)$/.exec(hash)
+  if (category?.[1] && getCategory(category[1])) return { kind: 'category', id: category[1] }
+  const anime = /^#\/anime\/([1-9]\d*)$/.exec(hash)
+  if (anime) return { kind: 'anime', id: Number(anime[1]) }
+  const detail = /^#\/(movie|tv)\/([1-9]\d*)(?:\/season\/([1-9]\d*))?$/.exec(hash)
+  if (detail && (detail[1] === 'tv' || !detail[3])) {
+    return { kind: 'detail', type: detail[1] as 'movie' | 'tv', id: Number(detail[2]), ...(detail[3] ? { season: Number(detail[3]) } : {}) }
+  }
+  return { kind: 'invalid' }
+}
+
+export function routeForView(view: ViewName, state: AppState): string | null {
+  if (view === 'home') return '#/'
+  if (view === 'category') return state.currentCategoryId ? `#/category/${state.currentCategoryId}` : null
+  if (view === 'favs') return '#/watchlist'
+  if (view === 'detail' || view === 'episodes' || view === 'player') {
+    if (state.currentAnimeId) return `#/anime/${state.currentAnimeId}`
+    if (!state.currentSerieId || !state.currentSerieType) return null
+    const base = `#/${state.currentSerieType}/${state.currentSerieId}`
+    return (view === 'episodes' || view === 'player' && state.currentSerieType === 'tv') && state.currentSerieType === 'tv' && state.currentSeason
+      ? `${base}/season/${state.currentSeason}` : base
+  }
+  return null
+}
 
 export function savePlayerSrc(src: string): void {
   lastPlayerSrc = src
@@ -30,6 +66,7 @@ export function initRouter(viewRefs: ViewRefs): void {
 // Focus targets for each view
 const FOCUS_TARGETS: Record<ViewName, string> = {
   home: '#logoBtn',
+  category: '#backToHomeCategory',
   detail: '#backToHome',
   episodes: '#backToSeasons',
   player: '#backToEpisodes',
@@ -59,13 +96,13 @@ export function showView(name: ViewName, onPlayerExit?: () => void): void {
 
   // Update page title for views with static titles (home, favs)
   // Dynamic titles (detail, episodes, player) are set by their own functions
-  if (TITLES[name] && typeof TITLES[name] === 'string') {
-    updatePageTitle(TITLES[name] as string)
+  if (name === 'home' || name === 'favs') {
+    updatePageTitle(TITLES[name])
     // Clear dynamic title cache when going home or to favs
-    if (name === 'home' || name === 'favs') {
-      lastDetailTitle = null
-      lastEpisodesTitle = null
-    }
+    lastDetailTitle = null
+    lastEpisodesTitle = null
+  } else if (name === 'category' && lastCategoryTitle) {
+    updatePageTitle(lastCategoryTitle)
   } else if (name === 'detail' && lastDetailTitle) {
     // Restore last detail title when navigating back from player
     updatePageTitle(lastDetailTitle)
@@ -113,6 +150,11 @@ export function updatePageTitle(titleOrView: string): void {
 export function setDetailTitle(name: string): void {
   lastDetailTitle = TITLES.detail(name)
   updatePageTitle(lastDetailTitle)
+}
+
+export function setCategoryTitle(name: string): void {
+  lastCategoryTitle = `${name} — KIROSHI OPTICS`
+  updatePageTitle(lastCategoryTitle)
 }
 
 export function setEpisodesTitle(name: string, season: number): void {

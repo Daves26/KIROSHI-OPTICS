@@ -44,15 +44,17 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
   ;(card as any).dataset.id = (item as any).id
   ;(card as any).dataset.mediaType = (item as any).media_type
 
-  const fav = isFavorite((item as any).id)
+  const fav = isFavorite(item as MediaItem)
   const itemId = (item as any).id
+  const href = isAnime ? `#/anime/${itemId}` : `#/${isTV ? 'tv' : 'movie'}/${itemId}`
 
   card.innerHTML = `
-    <button class="${CLASSES.FAV_BTN} ${fav ? CLASSES.FAV_ACTIVE : ''}" aria-label="Favorite">
+    <button class="${CLASSES.FAV_BTN} ${fav ? CLASSES.FAV_ACTIVE : ''}" aria-label="${fav ? 'Remove' : 'Add'} ${escHtml(title)} ${fav ? 'from' : 'to'} watchlist" aria-pressed="${fav}">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
       </svg>
     </button>
+    <a class="card-open" href="${href}" aria-label="View ${escHtml(title)}">
     <div class="result-poster" ${poster ? '' : `style="${posterPlaceholderStyle(itemId)}"`}>
       ${poster
       ? `<img src="${poster}" alt="${escHtml(title)}" loading="lazy" />`
@@ -66,6 +68,7 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
         ${rating ? `<span class="result-rating">★ ${rating}</span>` : ''}
       </div>
     </div>
+    </a>
   `
 
   const favBtn = card.querySelector<HTMLButtonElement>(`.${CLASSES.FAV_BTN}`)
@@ -73,18 +76,24 @@ export function buildResultCard(item: MediaItem | NormalizedAnime | TmdbMedia, e
     e.stopPropagation()
     const isNowFav = toggleFavorite(item as MediaItem)
     card.querySelector(`.${CLASSES.FAV_BTN}`)?.classList.toggle(CLASSES.FAV_ACTIVE, isNowFav)
+    favBtn.setAttribute('aria-pressed', String(isNowFav))
+    favBtn.setAttribute('aria-label', `${isNowFav ? 'Remove' : 'Add'} ${title} ${isNowFav ? 'from' : 'to'} watchlist`)
     showToast(
       isNowFav ? `Added "${title}" to watchlist` : `Removed "${title}" from watchlist`,
       isNowFav ? 'success' : 'info'
     )
   })
 
-  card.addEventListener('click', () => {
+  const open = () => {
     if (isAnime) {
       onOpenAnime((item as any).id)
     } else {
       onOpenDetail((item as any).id, (item as any).media_type)
     }
+  }
+  card.querySelector('.card-open')?.addEventListener('click', e => {
+    e.preventDefault()
+    open()
   })
 
   if (enablePrefetch) {
@@ -132,6 +141,7 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
         <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
     </button>
+    <a class="card-open" href="${isAnime ? `#/anime/${item.tmdbId}` : `#/${isTV ? 'tv' : 'movie'}/${item.tmdbId}`}" aria-label="Continue watching ${escHtml(title)}">
     <div class="result-poster">
       ${poster
       ? `<img src="${poster}" alt="${escHtml(title)}" loading="lazy" />`
@@ -141,6 +151,7 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
       <div class="type-pill ${isAnime ? 'anime' : (isTV ? 'series' : 'movie')}">${isAnime ? `E${item.episode || 1}` : (isTV ? `S${item.season || 1}E${item.episode || 1}` : 'Movie')}</div>
       <div class="result-title">${escHtml(title)}</div>
     </div>
+    </a>
   `
 
   const removeBtn = card.querySelector<HTMLButtonElement>('.remove-watching-btn')
@@ -153,7 +164,7 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
     setTimeout(() => card.remove(), 300)
   })
 
-  card.addEventListener('click', () => {
+  const open = () => {
     if (isAnime) {
       const epIdx = (item.episode || 1) - 1
       state.pendingAnimeResume = { episodeIndex: epIdx, title }
@@ -164,6 +175,10 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
     } else {
       onOpenDetail(item.tmdbId, 'movie')
     }
+  }
+  card.querySelector('.card-open')?.addEventListener('click', e => {
+    e.preventDefault()
+    open()
   })
 
   return card
@@ -175,8 +190,10 @@ export function buildContinueWatchingCard(item: ContinueWatchingItem): HTMLEleme
 
 export function buildEpisodeItem(ep: TmdbEpisode, idx: number): HTMLElement {
   const thumb = ep.still_path ? `${IMG_BASE}/w300${ep.still_path}` : null
-  const item = document.createElement('div')
+  const item = document.createElement('button')
+  item.type = 'button'
   item.className = CLASSES.EPISODE_ITEM
+  item.setAttribute('aria-label', `Play episode ${ep.episode_number}: ${ep.name || 'Untitled'}`)
   item.innerHTML = `
     <div class="ep-thumb">
       ${thumb
@@ -200,9 +217,11 @@ export function buildEpisodeItem(ep: TmdbEpisode, idx: number): HTMLElement {
 }
 
 export function buildAnimeEpisodeItem(ep: { number: number; name: string }, idx: number, data: AniListDetailResponse): HTMLElement {
-  const item = document.createElement('div')
+  const item = document.createElement('button')
+  item.type = 'button'
   const isCurrentEp = state.currentAnimeEpIndex === idx
   item.className = `${CLASSES.EPISODE_ITEM}${isCurrentEp ? ' current-episode' : ''}`
+  item.setAttribute('aria-label', `Play episode ${ep.number}: ${ep.name}`)
 
   const bgImage = data.posterUrl ?? data.banner_path ?? null
 

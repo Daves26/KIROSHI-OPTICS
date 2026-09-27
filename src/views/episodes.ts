@@ -62,8 +62,10 @@ export async function openAnimeEpisodes(title: string): Promise<void> {
 // ═══════════════════════════════════════
 // EPISODES VIEW (Series Seasons)
 // ═══════════════════════════════════════
+let seasonRequest = 0
 
 export async function openSeason(seasonNum: number, serieName: string, autoPlayEpisode?: number): Promise<void> {
+  const request = ++seasonRequest
   state.currentSeason = seasonNum
   dom.episodesTitle!.textContent = `${escHtml(serieName)} · Season ${seasonNum}`
 
@@ -81,6 +83,7 @@ export async function openSeason(seasonNum: number, serieName: string, autoPlayE
 
   try {
     const data = await tmdb<any>(`/tv/${state.currentSerieId}/season/${seasonNum}`)
+    if (request !== seasonRequest || state.currentSeason !== seasonNum) return
     const episodes = data.episodes || []
     state.currentEpisodes = episodes
 
@@ -104,6 +107,7 @@ export async function openSeason(seasonNum: number, serieName: string, autoPlayE
       }
     }
   } catch (e: any) {
+    if (request !== seasonRequest) return
     console.error(e)
     dom.episodesContent!.classList.remove('loading')
     dom.episodesContent!.innerHTML = '<p style="color:var(--accent);padding:24px">Failed to load episodes.</p>'

@@ -5,6 +5,7 @@ export let dom: Partial<DomRefs> = {}
 export let rowObserver: IntersectionObserver
 export let onShowView: ViewCallbacks['onShowView']
 export let onOpenDetail: ViewCallbacks['onOpenDetail']
+export let onOpenCategory: ViewCallbacks['onOpenCategory']
 export let onOpenSeason: ViewCallbacks['onOpenSeason']
 export let onLoadMore: ViewCallbacks['onLoadMore']
 export let onOpenAnime: ViewCallbacks['onOpenAnime']
@@ -23,6 +24,7 @@ export function initViewContext(domRefs: DomRefs, callbacks: ViewCallbacks): voi
   rowObserver = callbacks.rowObserver
   onShowView = callbacks.onShowView
   onOpenDetail = callbacks.onOpenDetail
+  onOpenCategory = callbacks.onOpenCategory
   onOpenSeason = callbacks.onOpenSeason
   onLoadMore = callbacks.onLoadMore
   onOpenAnime = callbacks.onOpenAnime

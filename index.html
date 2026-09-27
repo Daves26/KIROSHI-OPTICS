@@ -8,12 +8,11 @@
   <meta name="theme-color" content="#0D9488" />
 
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.json" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="KIROSHI" />
-  <link rel="apple-touch-icon" href="/icons/kiroshi_zen_logo.svg" />
+  <link rel="apple-touch-icon" href="/icons/kiroshi-favicon-32.png" />
 
   <!-- Open Graph / Social -->
   <meta property="og:type" content="website" />
@@ -73,7 +72,7 @@
   <!-- Header -->
   <header class="header" role="banner">
     <div class="header-inner">
-      <div class="logo" id="logoBtn" role="button" aria-label="Go to home page" tabindex="0">
+      <button class="logo" id="logoBtn" type="button" aria-label="Go to home page">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           <path d="M14 2C7.373 2 2 7.373 2 14s5.373 12 12 12 12-5.373 12-12S20.627 2 14 2z" fill="url(#lg1)"
             opacity=".9" />
@@ -87,7 +86,7 @@
           </defs>
         </svg>
         <span>KIROSHI OPTICS</span>
-      </div>
+      </button>
 
       <div class="search-pill" role="search" aria-label="Search">
         <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -144,6 +143,20 @@
         <div id="loadMore" class="load-more hidden">
           <button class="btn-glass" id="loadMoreBtn">Load more</button>
         </div>
+      </div>
+    </section>
+
+    <!-- Expanded catalog category -->
+    <section id="categoryView" class="view category-view" aria-label="Category">
+      <div class="detail-header">
+        <button class="back-btn" id="backToHomeCategory" type="button" aria-label="Back to home">← Home</button>
+        <h1 id="categoryTitle" class="category-title"></h1>
+      </div>
+      <div id="categoryGrid" class="results-grid category-grid"></div>
+      <div id="categoryStatus" class="category-status" role="status" aria-live="polite"></div>
+      <div class="category-footer">
+        <button id="categoryMore" type="button" class="btn-glass">Load more</button>
+        <div id="categorySentinel" class="category-sentinel" aria-hidden="true"></div>
       </div>
     </section>
 

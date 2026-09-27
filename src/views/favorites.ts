@@ -4,6 +4,7 @@ import type { MediaItem } from '../types.js'
 import { dom, onShowView } from './context.js'
 import { buildResultCard } from './components.js'
 import { refreshContinueWatchingRow } from './home.js'
+import { resetSearchSession } from './search.js'
 
 // ═══════════════════════════════════════
 // FAVORITES VIEW
@@ -34,7 +35,7 @@ export function openFavs(): void {
     `
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation()
-      removeFromFavorites(item.id)
+      removeFromFavorites(item)
       card.style.transform = 'scale(0.8) opacity(0)'
       card.style.transition = 'transform 0.3s ease, opacity 0.3s ease'
       setTimeout(() => card.remove(), 300)
@@ -56,13 +57,14 @@ export function goHome(): void {
     window.scrollTo({ top: 0, behavior: 'smooth' })
     refreshContinueWatchingRow()
   } else {
-    onShowView('home')
     clearSearchState()
+    onShowView('home')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 }
 
 function clearSearchState(): void {
+  resetSearchSession()
   dom.searchInput!.value = ''
   ;(dom.clearBtn as HTMLElement).classList.remove('visible')
   dom.searchResults?.classList.add(CLASSES.HIDDEN)
@@ -79,8 +81,9 @@ function clearSearchState(): void {
 export function updateAllFavIcons(): void {
   document.querySelectorAll(`.${CLASSES.RESULT_CARD}`).forEach(card => {
     const id = (card as any).dataset.id
-    if (id) {
-      const isFav = isFavorite(Number(id))
+    const mediaType = (card as HTMLElement).dataset.mediaType as MediaItem['media_type'] | undefined
+    if (id && mediaType) {
+      const isFav = isFavorite({ id: Number(id), media_type: mediaType })
       const btn = (card as HTMLElement).querySelector(`.${CLASSES.FAV_BTN}`)
       if (btn) btn.classList.toggle(CLASSES.FAV_ACTIVE, isFav)
     }

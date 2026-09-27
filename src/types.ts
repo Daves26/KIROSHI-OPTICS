@@ -282,6 +282,7 @@ export interface AppState {
   searchPage: number;
   searchQuery: string;
   searchTotal: number;
+  currentCategoryId: string | null;
   currentPosterPath: string | null;
   // Anime specific
   currentAnimeId: number | null;
@@ -338,7 +339,7 @@ export interface ContinueWatchingItem {
   posterUrl?: string;
   season?: number;
   episode?: number;
-  progress: number;
+  progress?: number;
   completed?: boolean;
   watchedAt: number;
 }
@@ -349,12 +350,17 @@ export interface ContinueWatchingMap {
 
 // ── Favorites Types ────────────────────
 export interface FavoritesMap {
-  [id: number]: MediaItem;
+  [id: string]: MediaItem;
 }
 
 // ── DOM Refs Types ─────────────────────
 export interface DomRefs {
   homeRows: HTMLElement;
+  categoryTitle: HTMLElement;
+  categoryGrid: HTMLElement;
+  categoryStatus: HTMLElement;
+  categoryMore: HTMLButtonElement;
+  categorySentinel: HTMLElement;
   heroText: HTMLElement | null;
   searchInput: HTMLInputElement;
   clearBtn: HTMLButtonElement | HTMLElement;
@@ -380,11 +386,12 @@ export interface DomRefs {
   playerBackText: HTMLElement;
 }
 
-export type ViewName = 'home' | 'detail' | 'episodes' | 'player' | 'favs';
+export type ViewName = 'home' | 'category' | 'detail' | 'episodes' | 'player' | 'favs';
 
 export interface ViewRefs {
   [key: string]: HTMLElement;
   home: HTMLElement;
+  category: HTMLElement;
   detail: HTMLElement;
   episodes: HTMLElement;
   player: HTMLElement;
@@ -405,6 +412,7 @@ export interface ViewCallbacks {
   rowObserver: IntersectionObserver;
   onShowView: ShowViewCallback;
   onGoHome: GoHomeCallback;
+  onOpenCategory: (id: string) => void;
   onOpenDetail: OpenDetailCallback;
   onOpenSeason: OpenSeasonCallback;
   onOpenAnime: OpenAnimeCallback;
@@ -415,6 +423,7 @@ export interface ViewCallbacks {
 
 // ── Home Row Types ─────────────────────
 export interface HomeRowConfig {
+  id: string;
   title: string;
   path: string;
 }

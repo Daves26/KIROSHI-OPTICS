@@ -59,10 +59,9 @@ describe('api.ts', () => {
 
   describe('clearCache', () => {
     it('calls localStorage.removeItem for kiroshi keys', () => {
+      localStorageStore.kiroshi_api_cache_test = JSON.stringify({ data: 1, expires: Date.now() + 1000 })
       clearCache()
-      // clearCache iterates Object.keys(localStorage) and removes kiroshi_ prefixed keys
-      // Since we can't easily mock Object.keys(localStorage), we verify no error is thrown
-      expect(localStorageMock.removeItem).toHaveBeenCalled()
+      expect(localStorageStore.kiroshi_api_cache_test).toBeUndefined()
     })
   })
 

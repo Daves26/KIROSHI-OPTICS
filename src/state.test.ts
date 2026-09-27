@@ -40,6 +40,21 @@ describe('state.ts', () => {
   })
 
   describe('Favorites', () => {
+    it('keeps identical IDs from different catalogs separate', () => {
+      const movie = { id: 42, title: 'Movie', media_type: 'movie' as const }
+      const anime = { id: 42, title: 'Anime', media_type: 'anime' as const }
+      toggleFavorite(movie)
+      toggleFavorite(anime)
+      expect(Object.keys(getFavorites())).toEqual(['tmdb:movie:42', 'anilist:anime:42'])
+      removeFromFavorites(movie)
+      expect(isFavorite(anime)).toBe(true)
+    })
+
+    it('migrates legacy numeric keys without losing media types', () => {
+      localStorageStore['kiroshi_favs'] = JSON.stringify({ 42: { id: 42, title: 'Old series', media_type: 'tv' } })
+      expect(getFavorites()['tmdb:tv:42']?.title).toBe('Old series')
+      expect(JSON.parse(localStorageStore['kiroshi_favs']!)).toHaveProperty('tmdb:tv:42')
+    })
     it('returns empty object when no favorites exist', () => {
       expect(getFavorites()).toEqual({})
     })
@@ -50,12 +65,12 @@ describe('state.ts', () => {
       // Add
       const added = toggleFavorite(item)
       expect(added).toBe(true)
-      expect(isFavorite(123)).toBe(true)
+      expect(isFavorite(item)).toBe(true)
 
       // Remove
       const removed = toggleFavorite(item)
       expect(removed).toBe(false)
-      expect(isFavorite(123)).toBe(false)
+      expect(isFavorite(item)).toBe(false)
     })
 
     it('dispatches storage event on toggle', () => {
@@ -68,12 +83,12 @@ describe('state.ts', () => {
       const item = { id: 789, title: 'Test', media_type: 'movie' as const }
       toggleFavorite(item)
 
-      expect(removeFromFavorites(789)).toBe(true)
-      expect(isFavorite(789)).toBe(false)
+      expect(removeFromFavorites(item)).toBe(true)
+      expect(isFavorite(item)).toBe(false)
     })
 
     it('removeFromFavorites returns false when item does not exist', () => {
-      expect(removeFromFavorites(999)).toBe(false)
+      expect(removeFromFavorites({ id: 999, media_type: 'movie' })).toBe(false)
     })
 
     it('clearFavorites removes all favorites', () => {
