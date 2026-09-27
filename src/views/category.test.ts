@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { initViewContext } from './context.js'
+import { dom, initViewContext } from './context.js'
 import { initCategoryView, loadNextCategoryPage, openCategory, suspendCategory } from './category.js'
 import { state } from '../state.js'
 
@@ -73,8 +73,9 @@ describe('expanded category', () => {
   it('ignores an old page when switching categories', async () => {
     const first = deferred<{ items: ReturnType<typeof movie>[]; hasMore: boolean }>()
     mocks.fetchPage.mockReturnValueOnce(first.promise).mockResolvedValueOnce({ items: [movie(2)], hasMore: false })
-    openCategory('drama')
-    openCategory('comedy')
+    await openCategory('drama')
+    expect(mocks.fetchPage).toHaveBeenCalledTimes(1)
+    void openCategory('comedy')
     await vi.waitFor(() => expect(document.getElementById('categoryGrid')?.textContent).toContain('Movie 2'))
     first.resolve({ items: [movie(1)], hasMore: false })
     await first.promise
@@ -101,5 +102,51 @@ describe('expanded category', () => {
     document.getElementById('categoryMore')!.click()
     await vi.waitFor(() => expect(document.querySelectorAll('#categoryGrid .result-card')).toHaveLength(1))
     expect(mocks.fetchPage.mock.calls.map(call => call[1])).toEqual([1, 1])
+  })
+
+  it('loads the first page after an asynchronous view transition activates the category', async () => {
+    const transition = deferred<void>()
+    initViewContext(dom as never, { onShowView: () => transition.promise } as never)
+    document.getElementById('categoryView')!.classList.remove('active')
+    mocks.fetchPage.mockResolvedValueOnce({ items: [movie(1)], hasMore: false })
+
+    const opening = openCategory('drama')
+    expect(mocks.fetchPage).not.toHaveBeenCalled()
+    expect((document.getElementById('categoryMore') as HTMLButtonElement).disabled).toBe(false)
+
+    document.getElementById('categoryView')!.classList.add('active')
+    transition.resolve()
+    await opening
+    await vi.waitFor(() => expect(document.querySelectorAll('#categoryGrid .result-card')).toHaveLength(1))
+    expect(mocks.fetchPage).toHaveBeenCalledTimes(1)
+    expect(mocks.fetchPage.mock.calls[0]?.[1]).toBe(1)
+  })
+
+  it('does not start a pending first page after switching to a different category', async () => {
+    const transition = deferred<void>()
+    initViewContext(dom as never, { onShowView: () => transition.promise } as never)
+    document.getElementById('categoryView')!.classList.remove('active')
+
+    const stale = openCategory('drama')
+    const current = openCategory('comedy')
+    document.getElementById('categoryView')!.classList.add('active')
+    mocks.fetchPage.mockResolvedValueOnce({ items: [movie(2)], hasMore: false })
+    transition.resolve()
+    await Promise.all([stale, current])
+    await vi.waitFor(() => expect(document.getElementById('categoryGrid')?.textContent).toContain('Movie 2'))
+    expect(mocks.fetchPage).toHaveBeenCalledTimes(1)
+    expect(mocks.fetchPage.mock.calls[0]?.[0]?.id).toBe('comedy')
+  })
+
+  it('cancels the initial load when leaving before the transition finishes', async () => {
+    const transition = deferred<void>()
+    initViewContext(dom as never, { onShowView: () => transition.promise } as never)
+    document.getElementById('categoryView')!.classList.remove('active')
+
+    const opening = openCategory('drama')
+    suspendCategory()
+    transition.resolve()
+    await opening
+    expect(mocks.fetchPage).not.toHaveBeenCalled()
   })
 })

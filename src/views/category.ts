@@ -11,6 +11,7 @@ const seen = new Set<string>()
 let page = 0
 let hasMore = true
 let loading = false
+let opening = false
 let failed = false
 let requestVersion = 0
 let savedScroll = 0
@@ -67,16 +68,21 @@ export function getCurrentCategoryId(): string | null {
   return state.currentCategoryId
 }
 
+export function isCategoryOpening(): boolean {
+  return opening
+}
+
 export function suspendCategory(): void {
-  savedScroll = window.scrollY
+  if (isActive()) savedScroll = window.scrollY
   requestVersion++
   loading = false
+  opening = false
   disconnect()
   scroller?.destroy()
   scroller = null
 }
 
-export function openCategory(id: string): void {
+export async function openCategory(id: string): Promise<void> {
   const category = getCategory(id)
   if (!category) return
   const isNew = state.currentCategoryId !== id
@@ -92,8 +98,16 @@ export function openCategory(id: string): void {
   }
 
   dom.categoryTitle!.textContent = category.title
-  onShowView('category')
+  const version = requestVersion
+  opening = true
+  const viewReady = onShowView('category')
   setCategoryTitle(category.title)
+  try {
+    await viewReady
+  } finally {
+    if (version === requestVersion) opening = false
+  }
+  if (version !== requestVersion || state.currentCategoryId !== id || !isActive()) return
   renderItems()
   updateControls()
   if (isNew || !items.length && hasMore && !loading) {

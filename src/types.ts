@@ -399,7 +399,7 @@ export interface ViewRefs {
 }
 
 // ── Callback Types ─────────────────────
-export type ShowViewCallback = (name: ViewName, onPlayerExit?: () => void) => void;
+export type ShowViewCallback = (name: ViewName, onPlayerExit?: () => void) => Promise<void> | void;
 export type OpenDetailCallback = (id: number, type: MediaType) => void;
 export type OpenSeasonCallback = (season: number, title: string, autoPlayEpisode?: number) => void;
 export type OpenAnimeCallback = (id: number) => void;

@@ -73,23 +73,28 @@ const FOCUS_TARGETS: Record<ViewName, string> = {
   favs: '#backToHomeFavs',
 }
 
-export function showView(name: ViewName, onPlayerExit?: () => void): void {
+export function showView(name: ViewName, onPlayerExit?: () => void): Promise<void> {
   // If leaving player, clear src to stop audio/video
   if (name !== 'player' && onPlayerExit) {
     onPlayerExit()
   }
 
-  // Use View Transitions API if available
+  // The transition's update callback may run after this function returns.
+  // Callers that need the new view to be active can await updateCallbackDone.
+  let viewReady: Promise<void>
   if (document.startViewTransition) {
     try {
-      document.startViewTransition(() => {
+      const transition = document.startViewTransition(() => {
         updateViewClasses(name)
       })
+      viewReady = transition.updateCallbackDone.then(() => undefined, () => undefined)
     } catch {
-      // AbortError during rapid view changes — fallback applied silently
+      updateViewClasses(name)
+      viewReady = Promise.resolve()
     }
   } else {
     updateViewClasses(name)
+    viewReady = Promise.resolve()
   }
 
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -123,6 +128,7 @@ export function showView(name: ViewName, onPlayerExit?: () => void): void {
       focusTarget.focus({ preventScroll: true })
     }
   })
+  return viewReady
 }
 
 function isFocusable(el: HTMLElement): boolean {

@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { parseRoute, routeForView } from './router.js'
+import { describe, expect, it, vi } from 'vitest'
+import { initRouter, parseRoute, routeForView, showView } from './router.js'
 import { state } from './state.js'
+import type { ViewName, ViewRefs } from './types.js'
 
 describe('hash routing', () => {
   it('accepts complete known routes and rejects suffixes', () => {
@@ -24,5 +25,40 @@ describe('hash routing', () => {
   it('generates a stable category route independently of row order', () => {
     state.currentCategoryId = 'sci-fi-fantasy'
     expect(routeForView('category', state)).toBe('#/category/sci-fi-fantasy')
+  })
+
+  it('signals readiness only after a view transition updates the DOM', async () => {
+    const views = Object.fromEntries(
+      (['home', 'category', 'detail', 'episodes', 'player', 'favs'] as ViewName[])
+        .map(name => [name, document.createElement('section')])
+    ) as ViewRefs
+    initRouter(views)
+    views.home.classList.add('active')
+    let complete!: () => void
+    const updateCallbackDone = new Promise<void>(resolve => { complete = resolve })
+    const previous = Object.getOwnPropertyDescriptor(document, 'startViewTransition')
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: (update: () => void) => {
+        update()
+        return { updateCallbackDone }
+      },
+    })
+    window.scrollTo = vi.fn()
+
+    try {
+      const ready = showView('category')
+      expect(views.category.classList.contains('active')).toBe(true)
+      let finished = false
+      void ready.then(() => { finished = true })
+      await Promise.resolve()
+      expect(finished).toBe(false)
+      complete()
+      await ready
+      expect(finished).toBe(true)
+    } finally {
+      if (previous) Object.defineProperty(document, 'startViewTransition', previous)
+      else Reflect.deleteProperty(document, 'startViewTransition')
+    }
   })
 })

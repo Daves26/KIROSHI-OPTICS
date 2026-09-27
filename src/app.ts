@@ -24,6 +24,7 @@ import {
   initCategoryView,
   openCategory,
   suspendCategory,
+  isCategoryOpening,
   getCurrentCategoryId,
   setupSearch,
   openFavs,
@@ -125,21 +126,22 @@ const domRefs: DomRefs = {
 initRouter(views)
 let handlingRoute = false
 let categoryOriginId: string | null = null
-function showView(name: ViewName, onPlayerExit?: () => void): void {
+function showView(name: ViewName, onPlayerExit?: () => void): Promise<void> {
   const current = Object.entries(views).find(([, el]) => el.classList.contains('active'))?.[0]
   if (current === 'detail' && name !== 'detail') cancelDetailRequest()
-  if (current === 'category' && name !== 'category') {
-    if (name === 'detail') categoryOriginId = getCurrentCategoryId()
+  if (name !== 'category' && (current === 'category' || isCategoryOpening())) {
+    if (name === 'detail' && current === 'category') categoryOriginId = getCurrentCategoryId()
     suspendCategory()
   } else if (name === 'detail' && current !== 'detail' && current !== 'player' && current !== 'episodes') {
     categoryOriginId = null
   }
   if (name === 'home') categoryOriginId = null
   if (name !== 'player') cancelPendingPlayback()
-  displayView(name, onPlayerExit)
-  if (handlingRoute || (name === 'home' && getIsSearchTrackingActive())) return
+  const viewReady = displayView(name, onPlayerExit)
+  if (handlingRoute || (name === 'home' && getIsSearchTrackingActive())) return viewReady
   const route = routeForView(name, state)
   if (route && window.location.hash !== route) history.pushState(null, '', route)
+  return viewReady
 }
 
 // ── IntersectionObserver for lazy rows ─
